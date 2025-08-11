@@ -3,6 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Brand palette */
+  --brand-50: #fbf8ef;
+  --brand-100: #f7f1df;
+  --brand-200: #efe4bf;
+  --brand-300: #e7d79f;
+  --brand-400: #decb87;
+  --brand-500: #d5bc82; /* primary */
+  --brand-600: #c8aa67;
+  --brand-700: #b1924d;
+  --brand-800: #8f743c;
+  --brand-900: #6c572b;
 }
 
 @theme inline {
@@ -23,4 +34,25 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Soft shadows used across the site */
+.soft-shadow {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.brand-gradient {
+  background-image: radial-gradient( circle at 20% 10%, var(--brand-50), transparent 35%),
+    radial-gradient(circle at 90% 20%, var(--brand-100), transparent 35%),
+    linear-gradient(to bottom, #ffffff, var(--brand-50));
+}
+
+/* Safe-area helpers for mobile */
+.safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.safe-y {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }

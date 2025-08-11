@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { isWireframeEnabled } from "@/lib/wireframe";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +28,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        {/* Wireframe overlay via query ?wf=1 */}
+        <div
+          className={isWireframeEnabled() ? "[&_*]:!bg-transparent [&_.border]:!border-gray-300" : undefined}
+          style={isWireframeEnabled() ? { outline: "1px dashed #ccc" } : undefined}
+        >
+          {children}
+        </div>
       </body>
     </html>
   );

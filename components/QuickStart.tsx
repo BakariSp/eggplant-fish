@@ -5,8 +5,8 @@ import { useState } from "react";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded border p-4 space-y-3 bg-white">
-      <h2 className="text-lg font-semibold">{title}</h2>
+    <section className="rounded-2xl border border-[color:var(--brand-200)] soft-shadow p-4 md:p-6 space-y-3 bg-white">
+      <h2 className="text-lg font-semibold" style={{ color: "var(--brand-700)" }}>{title}</h2>
       {children}
     </section>
   );
@@ -32,9 +32,10 @@ export default function QuickStart() {
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="enter pet slug (e.g. buddy123)"
-            className="border rounded px-3 py-2 flex-1"
+            className="border rounded-lg px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
           />
-          <button type="submit" className="px-3 py-2 rounded bg-black text-white">
+          <button type="submit" className="px-3 py-2 rounded-lg text-white soft-shadow"
+            style={{ backgroundColor: "var(--brand-500)" }}>
             View Profile
           </button>
         </form>
@@ -54,9 +55,10 @@ export default function QuickStart() {
             value={setupSlug}
             onChange={(e) => setSetupSlug(e.target.value)}
             placeholder="enter pet slug from registration card"
-            className="border rounded px-3 py-2 flex-1"
+            className="border rounded-lg px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
           />
-          <button type="submit" className="px-3 py-2 rounded bg-black text-white">
+          <button type="submit" className="px-3 py-2 rounded-lg text-white soft-shadow"
+            style={{ backgroundColor: "var(--brand-500)" }}>
             Start Setup
           </button>
         </form>
