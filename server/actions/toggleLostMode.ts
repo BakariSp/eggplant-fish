@@ -13,7 +13,7 @@ export async function toggleLostMode(raw: unknown) {
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return { ok: false as const, reason: "Invalid input" };
   const { petId, lostMode, lostMessage } = parsed.data;
-  const supabase = getServerSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   const updates: Record<string, unknown> = { lost_mode: lostMode };
   if (lostMode) {
     updates["lost_since"] = new Date().toISOString();

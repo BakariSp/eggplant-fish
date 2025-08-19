@@ -1,0 +1,67 @@
+[
+  {
+    "id": "p1",
+    "pet_id": "demo-1",
+    "content": "Sunrise hike with Buddy. He couldn’t stop smiling at the overlook!",
+    "images": ["/post/1.png", "/post/2.png", "/post/3.png"],
+    "author_name": "Alice",
+    "tags": ["hike", "morning"],
+    "created_at": "2025-08-10T07:30:00Z"
+  },
+  {
+    "id": "p2",
+    "pet_id": "demo-1",
+    "content": "Weekly bath time. Not thrilled, but very floofy after ✨",
+    "images": ["/post/4.png"],
+    "author_name": "Alice",
+    "tags": ["grooming", "home"],
+    "created_at": "2025-08-08T18:10:00Z"
+  },
+  {
+    "id": "p3",
+    "pet_id": "demo-1",
+    "content": "Park picnic! Buddy made three new friends and begged for snacks.",
+    "images": ["/post/5.png", "/post/6.png"],
+    "author_name": "Bob",
+    "tags": ["park", "social"],
+    "created_at": "2025-08-06T12:00:00Z"
+  },
+  {
+    "id": "p4",
+    "pet_id": "demo-1",
+    "content": "Training session: nailed ‘stay’ and ‘spin’. Good boy!",
+    "images": ["/post/2.png"],
+    "author_name": "Coach Kim",
+    "tags": ["training", "tricks"],
+    "created_at": "2025-08-03T15:45:00Z"
+  },
+  {
+    "id": "p5",
+    "pet_id": "demo-1",
+    "content": "Cooling off after a long walk.",
+    "images": ["/post/3.png"],
+    "author_name": "Alice",
+    "tags": ["walk", "summer"],
+    "created_at": "2025-08-02T17:05:00Z"
+  },
+  {
+    "id": "p6",
+    "pet_id": "demo-1",
+    "content": "Window seat patrol. Neighborhood secure. 🐶",
+    "images": ["/post/1.png"],
+    "author_name": "Bob",
+    "tags": ["home", "guard"],
+    "created_at": "2025-07-30T09:20:00Z"
+  },
+  {
+    "id": "p7",
+    "pet_id": "demo-2",
+    "content": "Luna’s lazy afternoon nap.",
+    "images": ["/post/4.png"],
+    "author_name": "Zoe",
+    "tags": ["nap"],
+    "created_at": "2025-08-09T14:10:00Z"
+  }
+]
+
+

@@ -1,0 +1,32 @@
+[
+  {
+    "pet_id": "demo-1",
+    "name": "Buddy",
+    "breed": "Golden Retriever",
+    "birthdate": "2020-01-15",
+    "vaccinated": true,
+    "vaccinations": ["Rabies", "DHPP / DAPP"],
+    "microchip_id": "077077",
+    "allergies": ["Wheat", "Dust mites"],
+    "neuter_status": true,
+    "gender": "male",
+    "traits": ["Active", "Leash trained", "Tries to eat things", "Friendly with cats"],
+    "avatar_url": "/dog.png"
+  },
+  {
+    "pet_id": "demo-2",
+    "name": "Luna",
+    "breed": "Corgi",
+    "birthdate": "2022-05-03",
+    "vaccinated": true,
+    "vaccinations": ["Rabies"],
+    "microchip_id": "088088",
+    "allergies": [],
+    "neuter_status": false,
+    "gender": "female",
+    "traits": ["Gentle", "Smart"],
+    "avatar_url": "/dog.png"
+  }
+]
+
+

@@ -9,7 +9,7 @@ export default function HeroCtas() {
   const [setupSlug, setSetupSlug] = useState("");
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 md:gap-4 lg:gap-6">
+    <div className="flex flex-col gap-3 md:gap-4 w-full max-w-[640px]">
       <form
         className="flex gap-2 md:gap-3 items-stretch"
         onSubmit={(e) => {

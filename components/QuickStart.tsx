@@ -18,7 +18,7 @@ export default function QuickStart() {
   const [setupSlug, setSetupSlug] = useState("");
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="flex flex-col gap-3">
       <Section title="Try a Public Pet Profile">
         <form
           onSubmit={(e) => {

@@ -1,0 +1,341 @@
+"use client";
+
+import { useState, useRef, useCallback, useEffect } from "react";
+import Image from "next/image";
+import { createPost } from "@/server/actions/createPost";
+
+type Props = {
+  petId: string;
+  onPostCreated?: () => void;
+};
+
+export default function PostComposer({ petId, onPostCreated }: Props) {
+  const [content, setContent] = useState("");
+  const [images, setImages] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).slice(0, 3);
+    setImages(files);
+    setCurrentImageIndex(0);
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setCurrentImageIndex(prev => Math.min(prev, images.length - 2));
+  };
+
+  // Touch/Mouse handlers for swipe gestures
+  const handleStart = useCallback((clientX: number) => {
+    if (images.length <= 1) return;
+    setIsDragging(true);
+    setDragStartX(clientX);
+    setDragOffset(0);
+  }, [images.length]);
+
+  const handleMove = useCallback((clientX: number) => {
+    if (!isDragging || images.length <= 1) return;
+    const offset = clientX - dragStartX;
+    setDragOffset(offset);
+  }, [isDragging, dragStartX, images.length]);
+
+  const handleEnd = useCallback(() => {
+    if (!isDragging || images.length <= 1) return;
+    
+    const threshold = 50; // Minimum swipe distance
+    const containerWidth = imageContainerRef.current?.offsetWidth || 300;
+    
+    if (Math.abs(dragOffset) > threshold) {
+      if (dragOffset > 0 && currentImageIndex > 0) {
+        // Swipe right - previous image
+        setCurrentImageIndex(prev => prev - 1);
+      } else if (dragOffset < 0 && currentImageIndex < images.length - 1) {
+        // Swipe left - next image
+        setCurrentImageIndex(prev => prev + 1);
+      }
+    }
+    
+    setIsDragging(false);
+    setDragOffset(0);
+  }, [isDragging, dragOffset, currentImageIndex, images.length]);
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleStart(e.clientX);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    handleMove(e.clientX);
+  };
+
+  const handleMouseUp = () => {
+    handleEnd();
+  };
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleStart(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent scrolling
+    handleMove(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    handleEnd();
+  };
+
+  // Add global mouse move/up listeners when dragging
+  useEffect(() => {
+    if (isDragging) {
+      const handleGlobalMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+      const handleGlobalMouseUp = () => handleEnd();
+      
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDragging, handleMove, handleEnd]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!content.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      // For now, just use placeholder URLs - in real app, upload to Supabase storage first
+      const imageUrls = images.map((_, i) => `https://via.placeholder.com/300x200?text=Image${i + 1}`);
+      
+      const result = await createPost({
+        petId,
+        content: content.trim(),
+        images: imageUrls,
+      });
+
+      if (result.ok) {
+        setContent("");
+        setImages([]);
+        onPostCreated?.();
+      } else {
+        alert(`Error: ${result.reason}`);
+      }
+    } catch {
+      alert("Failed to create post");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-[color:var(--brand-200)] soft-shadow p-4 bg-white space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="flex gap-3">
+          <div className="w-10 h-10 rounded-full bg-[color:var(--brand-100)] flex items-center justify-center">
+            <span className="text-sm font-medium" style={{ color: "var(--brand-700)" }}>🐾</span>
+          </div>
+          <div className="flex-1 space-y-2">
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="What's your pet up to today?"
+              className="w-full h-20 rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
+              maxLength={500}
+            />
+            
+            {/* Image Carousel */}
+            {images.length > 0 ? (
+              <div className="space-y-3">
+                {/* Main Image Display */}
+                <div 
+                  ref={imageContainerRef}
+                  className="relative h-48 rounded-lg overflow-hidden border border-[color:var(--brand-200)] bg-gray-50 select-none"
+                  onMouseDown={handleMouseDown}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  style={{ 
+                    cursor: images.length > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                    touchAction: 'pan-y pinch-zoom' 
+                  }}
+                >
+                  <div
+                    className="flex h-full transition-transform duration-300 ease-out"
+                    style={{
+                      transform: `translateX(${-currentImageIndex * 100 + (isDragging ? (dragOffset / (imageContainerRef.current?.offsetWidth || 300)) * 100 : 0)}%)`,
+                    }}
+                  >
+                    {images.map((image, index) => (
+                      <div key={index} className="relative h-full flex-shrink-0" style={{ width: '100%' }}>
+                        <Image
+                          src={URL.createObjectURL(image)}
+                          alt={`Upload ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 400px"
+                          draggable={false}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Remove Current Image Button */}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(currentImageIndex)}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500 text-white text-sm flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
+                  >
+                    ×
+                  </button>
+                  
+                  {/* Navigation Arrows (Desktop) */}
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentImageIndex(prev => Math.max(0, prev - 1))}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 sm:opacity-100 hover:bg-black/70 transition-all"
+                        disabled={currentImageIndex === 0}
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentImageIndex(prev => Math.min(images.length - 1, prev + 1))}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 sm:opacity-100 hover:bg-black/70 transition-all"
+                        disabled={currentImageIndex === images.length - 1}
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
+                  
+                  {/* Mobile Swipe Hint */}
+                  {images.length > 1 && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-white bg-black/50 px-2 py-1 rounded-full sm:hidden">
+                      Swipe to navigate
+                    </div>
+                  )}
+                </div>
+                
+                {/* Image Indicators */}
+                {images.length > 1 && (
+                  <div className="flex justify-center gap-2">
+                    {images.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentImageIndex 
+                            ? 'bg-[#EC5914]' 
+                            : 'bg-[color:var(--brand-200)]'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+                
+                {/* Thumbnail Strip */}
+                <div className="flex gap-2 justify-center">
+                  {images.map((image, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                        index === currentImageIndex 
+                          ? 'border-[#EC5914] scale-110' 
+                          : 'border-[color:var(--brand-200)] hover:border-[color:var(--brand-300)]'
+                      }`}
+                    >
+                      <Image
+                        src={URL.createObjectURL(image)}
+                        alt={`Thumbnail ${index + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="48px"
+                        draggable={false}
+                      />
+                    </button>
+                  ))}
+                  
+                  {/* Add More Images Button */}
+                  {images.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-12 h-12 rounded-lg border-2 border-dashed border-[color:var(--brand-300)] bg-gray-50 flex items-center justify-center text-[color:var(--brand-600)] hover:border-[color:var(--brand-400)] transition-colors"
+                    >
+                      <span className="text-lg">+</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Empty State - Add First Image */
+              <div className="h-32 rounded-lg border-2 border-dashed border-[color:var(--brand-300)] bg-gray-50 flex flex-col items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center gap-2 text-[color:var(--brand-600)] hover:text-[color:var(--brand-700)] transition-colors"
+                >
+                  <span className="text-2xl">📷</span>
+                  <span className="text-sm font-medium">Add photos</span>
+                  <span className="text-xs text-gray-500">Up to 3 images</span>
+                </button>
+              </div>
+            )}
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <div className="text-xs text-gray-500">
+            {content.length}/500 characters
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setContent("");
+                setImages([]);
+              }}
+              className="px-3 py-2 rounded-lg border border-[color:var(--brand-200)] bg-white text-sm"
+              disabled={isSubmitting}
+            >
+              Clear
+            </button>
+            <button
+              type="submit"
+              disabled={!content.trim() || isSubmitting}
+              className="px-3 py-2 rounded-lg text-white soft-shadow text-sm disabled:opacity-50"
+              style={{ backgroundColor: "#EC5914" }}
+            >
+              {isSubmitting ? "Posting..." : "Post"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+  );
+}

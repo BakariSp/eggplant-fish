@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FCEFDC; /* site background per design */
+  --foreground: #2B1F1B;
   /* Brand palette */
+  --brand-25: #fefcf7;
   --brand-50: #fbf8ef;
   --brand-100: #f7f1df;
   --brand-200: #efe4bf;
@@ -45,6 +46,55 @@ body {
   background-image: radial-gradient( circle at 20% 10%, var(--brand-50), transparent 35%),
     radial-gradient(circle at 90% 20%, var(--brand-100), transparent 35%),
     linear-gradient(to bottom, #ffffff, var(--brand-50));
+}
+
+/* Thin divider used under headers */
+.hairline {
+  height: 1px;
+  background: #b9afa3;
+  opacity: 0.8;
+}
+
+/* Typography System */
+.section-title {
+  @apply text-xl font-bold;
+  color: var(--brand-900);
+}
+
+.section-title-inverse {
+  @apply text-xl font-bold text-white;
+}
+
+.section-subtitle {
+  @apply text-lg font-semibold;
+  color: var(--brand-800);
+}
+
+.body-text {
+  @apply text-base;
+  color: var(--brand-700);
+}
+
+.body-text-muted {
+  @apply text-sm;
+  color: var(--brand-600);
+}
+
+/* Layout System */
+.section-container {
+  @apply mb-6;
+}
+
+.section-padding {
+  @apply px-6 py-4;
+}
+
+.section-header-spacing {
+  @apply mb-4;
+}
+
+.content-spacing {
+  @apply space-y-4;
 }
 
 /* Safe-area helpers for mobile */

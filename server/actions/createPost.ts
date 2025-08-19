@@ -15,7 +15,7 @@ export async function createPost(raw: unknown) {
     return { ok: false as const, reason: "Invalid input" };
   }
   const { petId, content, images = [] } = parsed.data;
-  const supabase = getServerSupabaseClient();
+  const supabase = await getServerSupabaseClient();
 
   const { error } = await supabase.from("pet_posts").insert({
     pet_id: petId,

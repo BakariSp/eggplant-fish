@@ -1,10 +1,18 @@
+import PostsClient from "./posts-client";
+import Container from "@/components/layout/Container";
+import Footer from "@/components/layout/Footer";
+
 export default async function PetPostsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <main className="p-4">
-      <h1 className="text-xl font-semibold">Pet Posts</h1>
-      <p className="text-sm text-gray-600">Pet ID: {id}</p>
-    </main>
+    <>
+      <main className="p-4">
+        <Container>
+          <PostsClient petId={id} />
+        </Container>
+      </main>
+      <Footer />
+    </>
   );
 }
 

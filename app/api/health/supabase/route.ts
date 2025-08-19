@@ -3,7 +3,7 @@ import { getServerSupabaseClient } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    const supabase = getServerSupabaseClient();
+    const supabase = await getServerSupabaseClient();
     // Lightweight check: run an RPC to fetch server time; fallback to a count on pets
     const { data: timeData } = await supabase.rpc("now").maybeSingle();
     const { error: countErr, count } = await supabase

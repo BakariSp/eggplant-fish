@@ -20,7 +20,7 @@ export async function updateProfile(raw: unknown) {
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return { ok: false as const, reason: "Invalid input" };
   const { id, ...updates } = parsed.data;
-  const supabase = getServerSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   const { error } = await supabase.from("pets").update(updates).eq("id", id);
   if (error) return { ok: false as const, reason: error.message };
   return { ok: true as const };
