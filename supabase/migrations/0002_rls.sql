@@ -13,6 +13,11 @@ drop policy if exists public_read_posts on public.pet_posts;
 create policy public_read_posts on public.pet_posts
 for select using (true);
 
+-- Public can read contact preferences (for pet profiles)
+drop policy if exists public_read_contact_prefs on public.contact_prefs;
+create policy public_read_contact_prefs on public.contact_prefs
+for select using (true);
+
 -- Owner can manage their own records
 drop policy if exists owner_manage_pets on public.pets;
 create policy owner_manage_pets on public.pets

@@ -36,52 +36,84 @@ export default function PostsClient({ petId }: Props) {
 
   useEffect(() => {
     let mounted = true;
-    // Load posts
-    fetch("/mock/pet-posts.json")
-      .then((r) => r.json())
-      .then((data: MockPost[]) => {
-        if (!mounted) return;
-        const filtered = data
-          .filter((p) => p.pet_id === petId)
-          .sort((a, b) => {
-            const ta = a.created_at ? Date.parse(a.created_at) : 0;
-            const tb = b.created_at ? Date.parse(b.created_at) : 0;
-            return tb - ta;
-          });
-        console.log('Posts loaded:', { petId, totalPosts: data.length, filteredPosts: filtered.length, filtered });
-        setPosts(filtered);
-      })
-      .catch((e: unknown) => {
-        if (!mounted) return;
-        setError(e instanceof Error ? e.message : "Failed to load mock data");
-      });
+    
+    const loadData = async () => {
+      try {
+        // Load posts from database
+        const postsResponse = await fetch(`/api/pets/${petId}/posts`);
+        if (postsResponse.ok) {
+          const responseText = await postsResponse.text();
+          if (responseText) {
+            try {
+              const postsData = JSON.parse(responseText);
+              if (mounted) setPosts(postsData.posts || []);
+            } catch (parseError) {
+              console.error("Failed to parse posts response:", parseError, responseText);
+              if (mounted) setPosts([]);
+            }
+          } else {
+            console.error("Empty posts response");
+            if (mounted) setPosts([]);
+          }
+        } else {
+          console.error("Posts API failed:", postsResponse.status, postsResponse.statusText);
+          // Set empty array instead of mock data
+          if (mounted) setPosts([]);
+        }
 
-    // Load profile summary
-    fetch("/mock/pet-profile.json")
-      .then((r) => r.json())
-      .then((rows: Record<string, unknown>[]) => {
-        if (!mounted) return;
-        setProfile(rows.find((x) => x.pet_id === petId) ?? null);
-      })
-      .catch(() => {});
+        // Load profile from database
+        const profileResponse = await fetch(`/api/pets/${petId}`);
+        if (profileResponse.ok) {
+          const responseText = await profileResponse.text();
+          if (responseText) {
+            try {
+              const profileData = JSON.parse(responseText);
+              if (mounted) setProfile(profileData.pet || null);
+            } catch (parseError) {
+              console.error("Failed to parse profile response:", parseError, responseText);
+              if (mounted) setProfile(null);
+            }
+          } else {
+            console.error("Empty profile response");
+            if (mounted) setProfile(null);
+          }
+        } else {
+          console.error("Profile API failed:", profileResponse.status, profileResponse.statusText);
+          if (mounted) setProfile(null);
+        }
 
-    // Load emergency info (kept for vet link in Owner section)
-    fetch("/mock/pet-emergency.json")
-      .then((r) => r.json())
-      .then((rows: Record<string, unknown>[]) => {
-        if (!mounted) return;
-        setEmergency(rows.find((x) => x.pet_id === petId) ?? null);
-      })
-      .catch(() => {});
+        // Load owner info from database
+        const ownerResponse = await fetch(`/api/pets/${petId}/owner`);
+        if (ownerResponse.ok) {
+          const responseText = await ownerResponse.text();
+          if (responseText) {
+            try {
+              const ownerData = JSON.parse(responseText);
+              if (mounted) setOwner(ownerData.owner || null);
+            } catch (parseError) {
+              console.error("Failed to parse owner response:", parseError, responseText);
+              if (mounted) setOwner(null);
+            }
+          } else {
+            console.error("Empty owner response");
+            if (mounted) setOwner(null);
+          }
+        } else {
+          console.error("Owner API failed:", ownerResponse.status, ownerResponse.statusText);
+          if (mounted) setOwner(null);
+        }
 
-    // Load owner info
-    fetch("/mock/pet-owner.json")
-      .then((r) => r.json())
-      .then((rows: Record<string, unknown>[]) => {
-        if (!mounted) return;
-        setOwner(rows.find((x) => x.pet_id === petId) ?? null);
-      })
-      .catch(() => {});
+        // Set emergency info to null for now (no API endpoint yet)
+        if (mounted) setEmergency(null);
+
+      } catch (error) {
+        console.error("Error loading data:", error);
+        if (mounted) setError(error instanceof Error ? error.message : "Failed to load data");
+      }
+    };
+
+    loadData();
+    
     return () => {
       mounted = false;
     };
@@ -101,7 +133,7 @@ export default function PostsClient({ petId }: Props) {
         <div className="hairline mt-2" />
       </header>
 
-      <ProfileSummary profile={profile} loading={profile === null} />
+      <ProfileSummary profile={{...profile, pet_id: petId}} loading={profile === null} />
 
       {showComposer && (
         <div ref={composerRef}>
@@ -248,7 +280,7 @@ export default function PostsClient({ petId }: Props) {
         <div className="text-sm text-red-600">{error}</div>
       ) : null}
 
-      <OwnerInfo owner={owner as any} emergency={emergency as any} />
+      <OwnerInfo owner={owner as Record<string, unknown>} emergency={emergency as Record<string, unknown>} />
     </div>
   );
 }

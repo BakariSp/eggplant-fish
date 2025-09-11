@@ -2,17 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { getServerSupabaseClient } from "@/lib/supabase";
+import { 
+  verificationCodeSchema, 
+  validateInput, 
+  withErrorHandler, 
+  createSuccessResponse,
+  createBadRequestError,
+  createInternalError
+} from "@/lib/validation";
 
-export async function POST(request: NextRequest) {
-  try {
-    const { code, session: sessionData } = await request.json();
-    
-    if (!code) {
-      return NextResponse.json(
-        { error: "Activation code is required" },
-        { status: 400 }
-      );
-    }
+async function handleVerifyCode(request: NextRequest) {
+  const body = await request.json();
+  
+  // Validate input
+  const validatedInput = validateInput(verificationCodeSchema, body);
+  const { code, session: sessionData } = validatedInput as { code: string; session?: { access_token?: string; refresh_token?: string } };
 
     // Create supabase client for API route
     const cookieStore = await cookies();
@@ -124,19 +129,10 @@ export async function POST(request: NextRequest) {
     // Check if user already has pets - use admin client to avoid network issues
     let pets = null;
     try {
-      // Use admin client for database queries to avoid timeout issues
-      const adminClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          auth: {
-            persistSession: false,
-            autoRefreshToken: false
-          }
-        }
-      );
+      // Use user-level client to enforce RLS policies
+      const userSupabase = await getServerSupabaseClient();
       
-      const { data } = await adminClient
+      const { data } = await userSupabase
         .from("pets")
         .select("id")
         .eq("owner_user_id", user.id)
@@ -151,17 +147,10 @@ export async function POST(request: NextRequest) {
 
     const hasPets = pets && pets.length > 0;
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse({
       hasPets,
       redirectTo: hasPets ? "/dashboard/pets" : "/setup"
-    });
-
-  } catch (error) {
-    console.error("Verification error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+    }, "Verification code validated successfully");
 }
+
+export const POST = withErrorHandler(handleVerifyCode);

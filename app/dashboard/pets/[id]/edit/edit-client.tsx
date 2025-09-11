@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
+import { updateProfile } from "@/server/actions/updateProfile";
 
 type Profile = {
   pet_id?: string;
@@ -40,6 +41,18 @@ export default function EditProfileClient({ petId }: Props) {
   const [emergency, setEmergency] = useState<Emergency | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  // Form refs for collecting data
+  const petNameRef = useRef<HTMLInputElement>(null);
+  const ownerNameRef = useRef<HTMLInputElement>(null);
+  const genderRef = useRef<HTMLSelectElement>(null);
+  const ageRef = useRef<HTMLInputElement>(null);
+  const microchipRef = useRef<HTMLInputElement>(null);
+  const neuterRef = useRef<HTMLSelectElement>(null);
+  const vaccinationsRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const vetNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -79,26 +92,33 @@ export default function EditProfileClient({ petId }: Props) {
             traits: ["Active", "Friendly"], // TODO: add to schema
             avatar_url: petData.avatar_url || ""
           };
+          console.log("📋 Profile data loaded:", profile);
           setProfile(profile);
         }
 
         if (contactData) {
           const owner: Owner = {
-            pet_id: contactData.pet_id,
             name: "Pet Owner", // TODO: get from auth.users
             phone: contactData.phone || "",
-            email: contactData.email || "",
-            address: "" // TODO: add to schema
+            email: contactData.email || ""
           };
+          console.log("👤 Contact data loaded:", owner);
           setOwner(owner);
+        } else {
+          console.log("👤 No contact data found, setting default owner");
+          setOwner({
+            name: "Pet Owner",
+            phone: "",
+            email: ""
+          });
         }
 
         // Set default emergency data for now
         setEmergency({
-          pet_id: petId,
-          vet_name: "Local Vet Clinic",
-          vet_phone: "555-0123",
-          vet_address: "123 Main St"
+          vet: {
+            name: "Local Vet Clinic",
+            phone: "555-0123"
+          }
         });
 
         setLoading(false);
@@ -128,19 +148,117 @@ export default function EditProfileClient({ petId }: Props) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🔥 SAVE BUTTON CLICKED - Form submission started");
     setSaving(true);
 
     try {
-      // Simulate save operation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const supabase = getBrowserSupabaseClient();
       
-      // In a real app, you would save the form data here
+      // Collect form data
+      const petName = petNameRef.current?.value || "";
+      const ownerName = ownerNameRef.current?.value || "";
+      const gender = genderRef.current?.value as "male" | "female" || "female";
+      const microchip = microchipRef.current?.value || "";
+      const neuter = neuterRef.current?.value === "Yes";
+      const vaccinations = vaccinationsRef.current?.value || "";
+      const phone = phoneRef.current?.value || "";
+      const email = emailRef.current?.value || "";
+      const vetName = vetNameRef.current?.value || "";
+      
+      console.log("📝 Form data collected:", {
+        petName,
+        ownerName,
+        gender,
+        microchip,
+        neuter,
+        vaccinations,
+        phone,
+        email,
+        vetName,
+        currentProfile: profile?.name
+      });
+
+      // Update pet profile
+      const petUpdates: any = {};
+      if (petName && petName !== profile?.name) petUpdates.name = petName;
+      
+      // Handle vaccinations - always update if field has content
+      if (vaccinations !== undefined && vaccinations !== null) {
+        const vaccinationText = vaccinations.trim();
+        petUpdates.vaccinated = vaccinationText.length > 0;
+        petUpdates.allergy_note = vaccinationText || null; // Store vaccinations in allergy_note for now
+      }
+      
+      console.log("Updating pet profile:", { petId, petUpdates });
+      
+      if (Object.keys(petUpdates).length > 0) {
+        const result = await updateProfile({
+          id: petId,
+          ...petUpdates
+        });
+        
+        console.log("Update result:", result);
+        
+        if (!result.ok) {
+          throw new Error(result.reason);
+        }
+      } else {
+        console.log("No pet profile changes to save");
+      }
+
+      // Update contact preferences - always update, even if empty
+      const contactUpdates = {
+        pet_id: petId,
+        phone: phone || null,
+        email: email || null,
+        show_phone: !!(phone && phone.trim()),
+        show_email: !!(email && email.trim())
+      };
+      
+      console.log("🔄 Updating contact preferences:", contactUpdates);
+      
+      // Try to upsert contact preferences
+      const { error: contactError, data: contactResult } = await supabase
+        .from("contact_prefs")
+        .upsert(contactUpdates, { 
+          onConflict: 'pet_id',
+          ignoreDuplicates: false 
+        })
+        .select();
+      
+      if (contactError) {
+        console.error("❌ Contact update error:", contactError);
+        // Don't throw error for contact prefs, just log it
+        alert(`Warning: Could not save contact preferences: ${contactError.message}`);
+      } else {
+        console.log("✅ Contact preferences updated successfully:", contactResult);
+      }
+
       console.log("Profile saved successfully");
       
-      // Navigate back to the posts page
-      router.push(`/dashboard/pets/${petId}/posts`);
+      // Small delay to ensure database changes are committed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Get the pet slug to redirect to public profile
+      const supabaseClient = getBrowserSupabaseClient();
+      const { data: petData } = await supabaseClient
+        .from("pets")
+        .select("slug, name")
+        .eq("id", petId)
+        .single();
+      
+      console.log("Pet data after save:", petData);
+      
+      if (petData?.slug) {
+        // Navigate to the public profile to see the changes
+        router.push(`/p/${petData.slug}`);
+      } else {
+        // Fallback to dashboard if slug not found
+        router.push(`/dashboard/pets`);
+      }
     } catch (error) {
       console.error("Failed to save profile:", error);
+      alert("Failed to save profile. Please try again.");
       setSaving(false);
     }
   };
@@ -190,6 +308,7 @@ export default function EditProfileClient({ petId }: Props) {
             Pet Name
           </label>
           <input
+            ref={petNameRef}
             type="text"
             defaultValue={profile?.name || ""}
             className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
@@ -203,6 +322,7 @@ export default function EditProfileClient({ petId }: Props) {
             Owner's Name
           </label>
           <input
+            ref={ownerNameRef}
             type="text"
             defaultValue={owner?.name || ""}
             className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
@@ -217,6 +337,7 @@ export default function EditProfileClient({ petId }: Props) {
               Pet Gender
             </label>
             <select
+              ref={genderRef}
               defaultValue={profile?.gender || "female"}
               className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600 appearance-none"
             >
@@ -229,6 +350,7 @@ export default function EditProfileClient({ petId }: Props) {
               Pet Age
             </label>
             <input
+              ref={ageRef}
               type="text"
               defaultValue={formatAge(profile?.birthdate)}
               className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
@@ -243,6 +365,7 @@ export default function EditProfileClient({ petId }: Props) {
             Microchip ID
           </label>
           <input
+            ref={microchipRef}
             type="text"
             defaultValue={profile?.microchip_id || ""}
             className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
@@ -256,6 +379,7 @@ export default function EditProfileClient({ petId }: Props) {
             Neuter Status
           </label>
           <select
+            ref={neuterRef}
             defaultValue={profile?.neuter_status ? "Yes" : "No"}
             className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600 appearance-none"
           >
@@ -270,6 +394,7 @@ export default function EditProfileClient({ petId }: Props) {
             Vaccinated
           </label>
           <input
+            ref={vaccinationsRef}
             type="text"
             defaultValue={profile?.vaccinations?.join(", ") || ""}
             className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
@@ -359,6 +484,7 @@ export default function EditProfileClient({ petId }: Props) {
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Phone:</label>
                 <input
+                  ref={phoneRef}
                   type="tel"
                   defaultValue={owner?.phone || ""}
                   className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent text-gray-700 focus:border-gray-400 focus:outline-none"
@@ -369,6 +495,7 @@ export default function EditProfileClient({ petId }: Props) {
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Email:</label>
                 <input
+                  ref={emailRef}
                   type="email"
                   defaultValue={owner?.email || ""}
                   className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent text-gray-700 focus:border-gray-400 focus:outline-none"
@@ -379,6 +506,7 @@ export default function EditProfileClient({ petId }: Props) {
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Emergency Doctor:</label>
                 <input
+                  ref={vetNameRef}
                   type="text"
                   defaultValue={emergency?.vet?.name || ""}
                   className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent text-gray-700 focus:border-gray-400 focus:outline-none"
@@ -394,6 +522,7 @@ export default function EditProfileClient({ petId }: Props) {
           <button
             type="submit"
             disabled={saving}
+
             className="w-full py-4 rounded-xl text-white font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: "#E85E0E" }}
           >

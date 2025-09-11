@@ -58,7 +58,8 @@ export default function VerifyPage() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      const data = responseText ? JSON.parse(responseText) : {};
 
       if (!response.ok) {
         setError(data.error || "Verification failed");
@@ -67,7 +68,8 @@ export default function VerifyPage() {
 
       if (data.success) {
         // Redirect based on whether user has pets
-        router.push(data.redirectTo);
+        const redirectPath = data.redirectTo || '/dashboard/pets';
+        router.push(redirectPath);
       }
       
     } catch (err) {
