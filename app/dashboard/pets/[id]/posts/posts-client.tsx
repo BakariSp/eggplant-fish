@@ -41,12 +41,18 @@ export default function PostsClient({ petId }: Props) {
       try {
         // Load posts from database
         const postsResponse = await fetch(`/api/pets/${petId}/posts`);
+        console.log("📝 Posts API response status:", postsResponse.status);
         if (postsResponse.ok) {
           const responseText = await postsResponse.text();
+          console.log("📝 Posts API response text:", responseText);
           if (responseText) {
             try {
               const postsData = JSON.parse(responseText);
-              if (mounted) setPosts(postsData.posts || []);
+              console.log("📝 Parsed posts data:", postsData);
+              // API returns nested structure: {success: true, data: {posts: [...]}}
+              const actualPosts = postsData.data?.posts || postsData.posts || [];
+              console.log("📝 Extracted posts:", actualPosts);
+              if (mounted) setPosts(actualPosts);
             } catch (parseError) {
               console.error("Failed to parse posts response:", parseError, responseText);
               if (mounted) setPosts([]);

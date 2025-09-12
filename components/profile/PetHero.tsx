@@ -8,7 +8,7 @@ type Pet = {
 	name: string;
 	breed: string;
 	age?: string;
-	avatar_url?: string;
+	avatar_url?: string | string[];
 	lost_mode?: boolean;
 };
 
@@ -21,7 +21,25 @@ type Props = {
 };
 
 export default function PetHero({ pet, tags = [], gender, images, petId }: Props) {
-  const gallery = images && images.length > 0 ? images : [pet.avatar_url || "/dog.png", "/dog.png", "/dog.png"];
+  // Handle avatar_url as either string or array, filter out empty values
+  const getValidAvatarUrls = () => {
+    if (images && images.length > 0) {
+      return images.filter(url => url && url.trim() !== "");
+    }
+    
+    if (pet.avatar_url) {
+      if (Array.isArray(pet.avatar_url)) {
+        const validUrls = pet.avatar_url.filter(url => url && url.trim() !== "");
+        return validUrls.length > 0 ? validUrls : ["/dog.png"];
+      } else if (typeof pet.avatar_url === 'string' && pet.avatar_url.trim() !== "") {
+        return [pet.avatar_url];
+      }
+    }
+    
+    return ["/dog.png"];
+  };
+  
+  const gallery = getValidAvatarUrls();
   const [index, setIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);

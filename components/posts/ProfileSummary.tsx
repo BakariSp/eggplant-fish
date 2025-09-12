@@ -13,7 +13,7 @@ type Profile = {
 	neuter_status?: boolean;
 	gender?: "male" | "female";
 	traits?: string[];
-	avatar_url?: string;
+	avatar_url?: string | string[];
 };
 
 type Props = {
@@ -60,7 +60,7 @@ export default function ProfileSummary({ profile, loading }: Props) {
 	return (
 		<section>
 			<PetHero
-				pet={{ name, breed, age, avatar_url: profile?.avatar_url || "/dog.png" }}
+				pet={{ name, breed, age, avatar_url: profile?.avatar_url }}
 				tags={tags}
 				gender={profile?.gender}
 				petId={profile?.pet_id}

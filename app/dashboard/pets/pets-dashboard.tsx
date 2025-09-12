@@ -10,7 +10,7 @@ interface Pet {
   slug: string;
   name: string;
   breed: string;
-  avatar_url: string;
+  avatar_url: string | string[];
   created_at: string;
 }
 
@@ -88,19 +88,31 @@ export default function PetsDashboard() {
             {pets.map((pet) => (
               <div key={pet.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="aspect-square bg-gray-200 relative">
-                  {pet.avatar_url ? (
-                    <img
-                      src={pet.avatar_url}
-                      alt={pet.name || "Pet"}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M4.5 12.75a6 6 0 0 1 11.25-2.25H18a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-4.5a3 3 0 1 0-6 0v4.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75v-7.5a.75.75 0 0 1 .75-.75h1.75Z" />
-                      </svg>
-                    </div>
-                  )}
+                  {(() => {
+                    // Get first valid avatar URL
+                    let avatarSrc = null;
+                    if (pet.avatar_url) {
+                      if (Array.isArray(pet.avatar_url)) {
+                        avatarSrc = pet.avatar_url.find(url => url && url.trim() !== "") || null;
+                      } else if (typeof pet.avatar_url === 'string' && pet.avatar_url.trim() !== "") {
+                        avatarSrc = pet.avatar_url;
+                      }
+                    }
+                    
+                    return avatarSrc ? (
+                      <img
+                        src={avatarSrc}
+                        alt={pet.name || "Pet"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M4.5 12.75a6 6 0 0 1 11.25-2.25H18a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-4.5a3 3 0 1 0-6 0v4.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75v-7.5a.75.75 0 0 1 .75-.75h1.75Z" />
+                        </svg>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-lg text-gray-900 mb-1">

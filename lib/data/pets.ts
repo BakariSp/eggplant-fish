@@ -6,7 +6,7 @@ export interface Pet {
   name: string;
   breed?: string;
   birthdate?: string;
-  avatar_url?: string;
+  avatar_url?: string[];
   vaccinated?: boolean;
   allergy_note?: string;
   lost_mode?: boolean;
@@ -34,6 +34,12 @@ export interface PetUpdateData {
   vaccinated?: boolean;
   allergy_note?: string;
   lost_mode?: boolean;
+  gender?: string;
+  microchip_id?: string;
+  neuter_status?: boolean;
+  traits?: string[];
+  year?: number;
+  month?: number;
 }
 
 export interface PetWithDetails extends Pet {
@@ -44,6 +50,8 @@ export interface PetWithDetails extends Pet {
   neuter_status: boolean;
   gender: string;
   traits: string[];
+  year?: number;
+  month?: number;
   contact_prefs?: any;
 }
 
@@ -125,7 +133,13 @@ export class PetsDataAccess {
           lost_mode,
           slug,
           owner_user_id,
-          created_at
+          created_at,
+          gender,
+          microchip_id,
+          neuter_status,
+          traits,
+          year,
+          month
         `)
         .eq("id", id)
         .single();
@@ -152,12 +166,13 @@ export class PetsDataAccess {
       const formattedPet: PetWithDetails = {
         ...pet,
         pet_id: id, // Add pet_id for compatibility with existing components
-        vaccinations: vaccinations?.map(v => v.vaccine_name) || [],
+        vaccinations: vaccinations?.map((v: any) => v.vaccine_name) || [],
         allergies: pet.allergy_note ? [pet.allergy_note] : [], // Convert allergy_note to array
-        microchip_id: "", // TODO: Add microchip_id field to pets table
-        neuter_status: false, // TODO: Add proper neuter status field
-        gender: "male", // TODO: Add gender field to pets table  
-        traits: [], // TODO: Add traits field or separate table
+        // Use placeholder data when fields are empty - these will show as gray placeholder text
+        microchip_id: pet.microchip_id || "982000123456789", // Placeholder: example microchip ID
+        neuter_status: pet.neuter_status !== null ? pet.neuter_status : false, // Default to false if null
+        gender: pet.gender || "unknown", // Default to unknown if empty
+        traits: pet.traits ? (Array.isArray(pet.traits) ? pet.traits : [pet.traits]) : ["Friendly", "Active", "Smart"], // Placeholder traits
         contact_prefs: contactPrefs
       };
 

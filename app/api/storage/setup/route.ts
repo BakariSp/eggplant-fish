@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await getServerSupabaseClient();
     
-    // Check if the user-image bucket exists and is accessible
+    // Check if all required buckets exist and are accessible
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
 
     if (listError) {
@@ -17,38 +17,59 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const userImageBucket = buckets?.find(b => b.id === "user-image");
+    const requiredBuckets = Object.values(STORAGE_BUCKETS);
+    const existingBuckets = buckets?.map(b => b.id) || [];
+    const missingBuckets = requiredBuckets.filter(bucket => !existingBuckets.includes(bucket));
 
-    if (!userImageBucket) {
+    if (missingBuckets.length > 0) {
       return NextResponse.json({
         success: false,
-        error: "user-image bucket not found",
-        message: "Please create the 'user-image' bucket in your Supabase dashboard",
+        error: "Missing required buckets",
+        message: "Please create the following buckets in your Supabase dashboard",
+        missingBuckets,
         instructions: [
           "1. Go to your Supabase dashboard",
           "2. Navigate to Storage",
-          "3. The 'user-image' bucket should already exist",
-          "4. Make sure it's set to public if you want public access"
+          "3. Create the following buckets:",
+          ...missingBuckets.map(bucket => `   - ${bucket} (public: true)`),
+          "4. Set file size limits and allowed MIME types as needed"
         ]
       }, { status: 404 });
     }
 
-    // Test upload permissions by trying to list files
-    const { error: listFilesError } = await supabase.storage
-      .from("user-image")
-      .list("", { limit: 1 });
+    // Test access to each bucket
+    const bucketTests = await Promise.all(
+      requiredBuckets.map(async (bucketId) => {
+        const { error } = await supabase.storage
+          .from(bucketId)
+          .list("", { limit: 1 });
+        
+        return {
+          bucket: bucketId,
+          accessible: !error,
+          error: error?.message || null
+        };
+      })
+    );
+
+    const inaccessibleBuckets = bucketTests.filter(test => !test.accessible);
+
+    if (inaccessibleBuckets.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: "Some buckets are not accessible",
+        inaccessibleBuckets,
+        message: "Please check bucket permissions and policies"
+      }, { status: 403 });
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Storage is ready to use",
-      bucket: {
-        id: userImageBucket.id,
-        name: userImageBucket.name,
-        public: userImageBucket.public,
-        createdAt: userImageBucket.created_at
-      },
-      canAccess: !listFilesError,
-      accessError: listFilesError?.message || null
+      message: "All storage buckets are ready to use",
+      buckets: bucketTests.map(test => ({
+        bucket: test.bucket,
+        accessible: test.accessible
+      }))
     });
 
   } catch (error) {

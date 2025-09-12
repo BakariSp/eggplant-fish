@@ -64,7 +64,7 @@ export class PostsDataAccess {
       const formattedPosts: PostWithExtras[] = posts?.map(post => ({
         ...post,
         pet_id: petId, // Add pet_id for compatibility
-        title: "Untitled Post", // Add default title (title field doesn't exist in schema)
+        title: post.content?.substring(0, 50) + (post.content?.length > 50 ? "..." : "") || "Untitled Post", // Use content as title
         author_name: "Pet Owner", // Add default author
         tags: [] // Add default tags (tags field doesn't exist in schema)
       })) || [];

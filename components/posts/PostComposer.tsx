@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { createPost } from "@/server/actions/createPost";
+import { uploadImage } from "@/lib/storage";
 
 type Props = {
   petId: string;
@@ -115,8 +116,25 @@ export default function PostComposer({ petId, onPostCreated }: Props) {
 
     setIsSubmitting(true);
     try {
-      // For now, just use placeholder URLs - in real app, upload to Supabase storage first
-      const imageUrls = images.map((_, i) => `https://via.placeholder.com/300x200?text=Image${i + 1}`);
+      // Upload images to Supabase storage first
+      const imageUrls: string[] = [];
+      
+      for (const file of images) {
+        const uploadResult = await uploadImage(file, {
+          bucket: "user-image",
+          folder: `posts/${petId}`,
+          allowedTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+          maxSizeBytes: 10 * 1024 * 1024, // 10MB
+        });
+
+        if (uploadResult.success && uploadResult.url) {
+          imageUrls.push(uploadResult.url);
+        } else {
+          console.error("Image upload failed:", uploadResult.error);
+          alert(`Image upload failed: ${uploadResult.error}`);
+          return;
+        }
+      }
       
       const result = await createPost({
         petId,
@@ -131,7 +149,8 @@ export default function PostComposer({ petId, onPostCreated }: Props) {
       } else {
         alert(`Error: ${result.reason}`);
       }
-    } catch {
+    } catch (error) {
+      console.error("Post creation failed:", error);
       alert("Failed to create post");
     } finally {
       setIsSubmitting(false);

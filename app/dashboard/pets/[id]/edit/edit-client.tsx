@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 import { updateProfile } from "@/server/actions/updateProfile";
+import { updateUserProfile } from "@/server/actions/updateUserProfile";
+import { PlaceholderInput, PlaceholderSelect, PlaceholderTags } from "@/components/ui/PlaceholderInput";
+import PhotoUploader from "@/components/PhotoUploader";
+import { getPetAvatarUploadOptions } from "@/lib/storage";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type Profile = {
   pet_id?: string;
@@ -16,9 +21,11 @@ type Profile = {
   allergies?: string[];
   microchip_id?: string;
   neuter_status?: boolean;
-  gender?: "male" | "female";
+  gender?: "male" | "female" | "unknown";
   traits?: string[];
-  avatar_url?: string;
+  avatar_url?: string[];
+  year?: number;
+  month?: number;
 };
 
 type Owner = {
@@ -36,28 +43,41 @@ type Props = { petId: string };
 
 export default function EditProfileClient({ petId }: Props) {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [owner, setOwner] = useState<Owner | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Form refs for collecting data
   const petNameRef = useRef<HTMLInputElement>(null);
   const ownerNameRef = useRef<HTMLInputElement>(null);
   const genderRef = useRef<HTMLSelectElement>(null);
-  const ageRef = useRef<HTMLInputElement>(null);
+  const ageYearRef = useRef<HTMLSelectElement>(null);
+  const ageMonthRef = useRef<HTMLSelectElement>(null);
   const microchipRef = useRef<HTMLInputElement>(null);
   const neuterRef = useRef<HTMLSelectElement>(null);
   const vaccinationsRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const vetNameRef = useRef<HTMLInputElement>(null);
+  const [currentTags, setCurrentTags] = useState<string[]>([]);
 
   useEffect(() => {
     let mounted = true;
     
     async function loadPetData() {
+      // Debug: Check authentication before loading data
+      console.log("🔐 Loading data - auth check:", {
+        userId: user?.id,
+        userEmail: user?.email,
+        authLoading,
+        isAuthenticated: !!user
+      });
+      
       try {
         const supabase = getBrowserSupabaseClient();
         
@@ -78,27 +98,60 @@ export default function EditProfileClient({ petId }: Props) {
         if (!mounted) return;
 
         if (petData) {
+          // Debug: Log raw pet data from database
+          console.log("🐾 Raw pet data from database:", {
+            id: petData.id,
+            name: petData.name,
+            gender: petData.gender,
+            microchip_id: petData.microchip_id,
+            neuter_status: petData.neuter_status,
+            year: petData.year,
+            month: petData.month,
+            traits: petData.traits,
+            allergy_note: petData.allergy_note
+          });
+          
+          // Filter out empty/null avatar URLs when loading
+          const validAvatarUrls = petData.avatar_url 
+            ? petData.avatar_url.filter((url: any) => url && url.trim() !== "")
+            : [];
+
           const profile: Profile = {
             pet_id: petData.id,
             name: petData.name || "",
             breed: petData.breed || "",
             birthdate: petData.birthdate || "",
             vaccinated: petData.vaccinated || false,
-            vaccinations: petData.vaccinated ? ["Rabies", "DHPP / DAPP"] : [],
-            microchip_id: "077077", // TODO: add to schema
+            vaccinations: petData.vaccinated ? ["Rabies", "DHPP", "Bordetella"] : [],
+            microchip_id: petData.microchip_id || "", // Keep null as null, empty string as empty string
             allergies: petData.allergy_note ? petData.allergy_note.split(",").map((s: string) => s.trim()) : [],
-            neuter_status: true, // TODO: add to schema
-            gender: "male", // TODO: add to schema
-            traits: ["Active", "Friendly"], // TODO: add to schema
-            avatar_url: petData.avatar_url || ""
+            neuter_status: petData.neuter_status, // Keep null as null
+            gender: petData.gender || "", // Keep null as empty string for placeholder
+            traits: petData.traits ? (Array.isArray(petData.traits) ? petData.traits : [petData.traits]) : [],
+            avatar_url: validAvatarUrls,
+            year: petData.year || null, // Load year field
+            month: petData.month || null // Load month field
           };
           console.log("📋 Profile data loaded:", profile);
           setProfile(profile);
+          
+          // Initialize current tags
+          setCurrentTags(profile.traits || []);
+          
+          // Load existing profile photos from avatar_url array
+          if (petData.avatar_url && Array.isArray(petData.avatar_url)) {
+            // Filter out empty strings and null values
+            const validUrls = petData.avatar_url.filter((url: any) => url && url.trim() !== "");
+            setUploadedImages(validUrls);
+          }
         }
 
+        // Get current user info for owner name
+        const { data: { user } } = await supabase.auth.getUser();
+        
         if (contactData) {
           const owner: Owner = {
-            name: "Pet Owner", // TODO: get from auth.users
+            name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
             phone: contactData.phone || "",
             email: contactData.email || ""
           };
@@ -107,7 +160,7 @@ export default function EditProfileClient({ petId }: Props) {
         } else {
           console.log("👤 No contact data found, setting default owner");
           setOwner({
-            name: "Pet Owner",
+            name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
             phone: "",
             email: ""
           });
@@ -132,23 +185,52 @@ export default function EditProfileClient({ petId }: Props) {
     return () => { mounted = false; };
   }, [petId]);
 
-  const formatAge = (birthdate?: string): string => {
-    if (!birthdate) return "1y 4m";
-    const birth = new Date(birthdate);
-    if (Number.isNaN(birth.getTime())) return "1y 4m";
-    const now = new Date();
-    let years = now.getFullYear() - birth.getFullYear();
-    let months = now.getMonth() - birth.getMonth();
-    if (months < 0) {
-      years -= 1;
-      months += 12;
+  // Handle image upload
+  const handleImageUpload = (result: { success: boolean; url?: string; path?: string; error?: string }) => {
+    if (result.success && result.url) {
+      setUploadedImages(prev => [...prev, result.url!]);
+      console.log("✅ Image uploaded successfully:", result.url);
+    } else {
+      console.error("❌ Image upload failed:", result.error);
+      alert(`Upload failed: ${result.error}`);
     }
-    return `${years}y ${months}m`;
+    setIsUploading(false);
+  };
+
+  const handleUploadStart = () => {
+    setIsUploading(true);
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleLogout = async () => {
+    const supabase = getBrowserSupabaseClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  const formatAge = (profile?: any): { years: string; months: string } => {
+    if (!profile?.year && !profile?.month) return { years: "2", months: "3" }; // Default placeholder
+    return { 
+      years: (profile.year || 0).toString(), 
+      months: (profile.month || 0).toString() 
+    };
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("🔥 SAVE BUTTON CLICKED - Form submission started");
+    
+    // Debug: Check client-side authentication
+    console.log("🔐 Client-side auth check:", {
+      userId: user?.id,
+      userEmail: user?.email,
+      authLoading,
+      isAuthenticated: !!user
+    });
+    
     setSaving(true);
 
     try {
@@ -157,7 +239,9 @@ export default function EditProfileClient({ petId }: Props) {
       // Collect form data
       const petName = petNameRef.current?.value || "";
       const ownerName = ownerNameRef.current?.value || "";
-      const gender = genderRef.current?.value as "male" | "female" || "female";
+      const gender = genderRef.current?.value as "male" | "female" | "unknown" || "unknown";
+      const ageYears = ageYearRef.current?.value || "";
+      const ageMonths = ageMonthRef.current?.value || "";
       const microchip = microchipRef.current?.value || "";
       const neuter = neuterRef.current?.value === "Yes";
       const vaccinations = vaccinationsRef.current?.value || "";
@@ -169,50 +253,144 @@ export default function EditProfileClient({ petId }: Props) {
         petName,
         ownerName,
         gender,
+        ageYears,
+        ageMonths,
         microchip,
         neuter,
         vaccinations,
         phone,
         email,
         vetName,
-        currentProfile: profile?.name
+        currentProfile: profile?.name,
+        currentYear: profile?.year,
+        currentMonth: profile?.month
       });
 
       // Update pet profile
       const petUpdates: any = {};
-      if (petName && petName !== profile?.name) petUpdates.name = petName;
       
-      // Handle vaccinations - always update if field has content
-      if (vaccinations !== undefined && vaccinations !== null) {
-        const vaccinationText = vaccinations.trim();
+      // Handle pet name - save if different from current value
+      if (petName !== profile?.name) {
+        // If the value is the placeholder text, save empty string
+        petUpdates.name = petName === "Buddy" ? "" : petName;
+      }
+      
+      // Handle owner name - update user metadata if different from current value
+      if (ownerName !== owner?.name && user?.id) {
+        const actualOwnerName = ownerName === "John Smith" ? "" : ownerName;
+        const updateResult = await updateUserProfile({
+          userId: user.id,
+          fullName: actualOwnerName
+        });
+        
+        if (!updateResult.ok) {
+          console.error("Failed to update owner name:", updateResult.reason);
+          alert(`Warning: Could not save owner name: ${updateResult.reason}`);
+        } else {
+          console.log("✅ Owner name updated successfully");
+        }
+      }
+      
+      // Handle new fields - save if different from current value
+      if (gender !== profile?.gender) {
+        petUpdates.gender = gender === "unknown" ? "unknown" : gender; // If default "unknown", save "unknown"
+      }
+      if (microchip !== profile?.microchip_id) {
+        petUpdates.microchip_id = microchip === "982000123456789" ? null : microchip; // If placeholder, save null
+      }
+      if (neuter !== profile?.neuter_status) {
+        // If placeholder "Not Spayed/Neutered" is selected, save null
+        const neuterValue = neuterRef.current?.value;
+        if (neuterValue === "" || neuterValue === undefined) {
+          petUpdates.neuter_status = null; // Placeholder selected
+        } else {
+          petUpdates.neuter_status = neuter; // Actual selection
+        }
+      }
+      
+      // Handle age - save year and month directly
+      const currentAge = formatAge(profile);
+      console.log("🔢 Age comparison:", {
+        ageYears,
+        ageMonths,
+        currentAge,
+        profileYear: profile?.year,
+        profileMonth: profile?.month
+      });
+      
+      if (ageYears !== currentAge.years || ageMonths !== currentAge.months) {
+        if (ageYears === "2" && ageMonths === "3") {
+          // If placeholder, clear year and month
+          petUpdates.year = null;
+          petUpdates.month = null;
+          console.log("🗑️ Clearing age (placeholder selected)");
+        } else {
+          // Save year and month directly
+          petUpdates.year = parseInt(ageYears);
+          petUpdates.month = parseInt(ageMonths);
+          console.log("💾 Saving age:", { year: petUpdates.year, month: petUpdates.month });
+        }
+      } else {
+        console.log("⏭️ Age unchanged, skipping update");
+      }
+      
+      // Handle uploaded images - save all uploaded images to avatar_url array
+      if (uploadedImages.length > 0) {
+        petUpdates.avatar_url = uploadedImages;
+      }
+      
+      // Handle vaccinations - save if different from current value
+      if (vaccinations !== profile?.allergies?.join(", ")) {
+        const vaccinationText = vaccinations === "Rabies, DHPP, Bordetella" ? "" : vaccinations.trim();
         petUpdates.vaccinated = vaccinationText.length > 0;
         petUpdates.allergy_note = vaccinationText || null; // Store vaccinations in allergy_note for now
+      }
+      
+      // Handle traits - save if different from current value
+      const currentTraits = profile?.traits || [];
+      const isTraitsChanged = JSON.stringify(currentTags.sort()) !== JSON.stringify(currentTraits.sort());
+      if (isTraitsChanged) {
+        // Check if current tags are just placeholder tags
+        const placeholderTags = ["Friendly", "Active", "Smart"];
+        const isPlaceholderTags = currentTags.length === placeholderTags.length && 
+          currentTags.every(tag => placeholderTags.includes(tag));
+        
+        if (isPlaceholderTags) {
+          petUpdates.traits = null; // Save null if placeholder tags
+        } else {
+          petUpdates.traits = currentTags; // Save actual tags
+        }
+        console.log("🏷️ Saving traits:", { currentTags, isPlaceholderTags, savedValue: petUpdates.traits });
       }
       
       console.log("Updating pet profile:", { petId, petUpdates });
       
       if (Object.keys(petUpdates).length > 0) {
-        const result = await updateProfile({
+        const updateData = {
           id: petId,
           ...petUpdates
-        });
+        };
+        console.log("Sending update data to updateProfile:", updateData);
+        
+        const result = await updateProfile(updateData);
         
         console.log("Update result:", result);
         
         if (!result.ok) {
+          console.error("Update failed:", result.reason);
           throw new Error(result.reason);
         }
       } else {
         console.log("No pet profile changes to save");
       }
 
-      // Update contact preferences - always update, even if empty
+      // Update contact preferences - only update if not placeholder values
       const contactUpdates = {
         pet_id: petId,
-        phone: phone || null,
-        email: email || null,
-        show_phone: !!(phone && phone.trim()),
-        show_email: !!(email && email.trim())
+        phone: (phone && phone !== "(555) 123-4567") ? phone : null,
+        email: (email && email !== "john.smith@gmail.com") ? email : null,
+        show_phone: !!(phone && phone.trim() && phone !== "(555) 123-4567"),
+        show_email: !!(email && email.trim() && email !== "john.smith@gmail.com")
       };
       
       console.log("🔄 Updating contact preferences:", contactUpdates);
@@ -286,12 +464,36 @@ export default function EditProfileClient({ petId }: Props) {
           <div className="text-lg font-semibold">EGGPLANT.FISH</div>
         </div>
         <div className="flex gap-2">
-          <button className="px-4 py-2 text-sm rounded-full border border-gray-300 bg-white">
-            Sign Up
-          </button>
-          <button className="px-4 py-2 text-sm rounded-full bg-black text-white">
-            Login
-          </button>
+          {authLoading ? (
+            <div className="text-sm text-gray-500">Loading...</div>
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                {user.email}
+              </span>
+              <button 
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm rounded-full bg-black text-white hover:bg-gray-800"
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <>
+              <button 
+                onClick={() => router.push("/register")}
+                className="px-4 py-2 text-sm rounded-full border border-gray-300 bg-white hover:bg-gray-50"
+              >
+                Sign Up
+              </button>
+              <button 
+                onClick={() => router.push("/login")}
+                className="px-4 py-2 text-sm rounded-full bg-black text-white hover:bg-gray-800"
+              >
+                Login
+              </button>
+            </>
+          )}
         </div>
       </header>
 
@@ -307,12 +509,12 @@ export default function EditProfileClient({ petId }: Props) {
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Pet Name
           </label>
-          <input
+          <PlaceholderInput
             ref={petNameRef}
             type="text"
+            placeholder="Buddy"
             defaultValue={profile?.name || ""}
-            className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
-            placeholder="Pet name"
+            className="w-full px-4 py-3 rounded-xl border-0 bg-white"
           />
         </div>
 
@@ -321,12 +523,12 @@ export default function EditProfileClient({ petId }: Props) {
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Owner's Name
           </label>
-          <input
+          <PlaceholderInput
             ref={ownerNameRef}
             type="text"
+            placeholder="John Smith"
             defaultValue={owner?.name || ""}
-            className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
-            placeholder="Owner name"
+            className="w-full px-4 py-3 rounded-xl border-0 bg-white"
           />
         </div>
 
@@ -336,26 +538,44 @@ export default function EditProfileClient({ petId }: Props) {
             <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
               Pet Gender
             </label>
-            <select
+            <PlaceholderSelect
               ref={genderRef}
-              defaultValue={profile?.gender || "female"}
-              className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600 appearance-none"
-            >
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select>
+              placeholder="Unknown"
+              defaultValue={profile?.gender || "unknown"}
+              options={[
+                { value: "female", label: "Female" },
+                { value: "male", label: "Male" },
+                { value: "unknown", label: "Unknown" }
+              ]}
+              className="w-full px-4 py-3 rounded-xl border-0 bg-white appearance-none"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
               Pet Age
             </label>
-            <input
-              ref={ageRef}
-              type="text"
-              defaultValue={formatAge(profile?.birthdate)}
-              className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
-              placeholder="1y 4m"
-            />
+            <div className="flex gap-2">
+              <PlaceholderSelect
+                ref={ageYearRef}
+                placeholder="2y"
+                defaultValue={formatAge(profile).years}
+                options={Array.from({ length: 31 }, (_, i) => ({
+                  value: i.toString(),
+                  label: `${i}y`
+                }))}
+                className="flex-1 px-4 py-3 rounded-xl border-0 bg-white appearance-none"
+              />
+              <PlaceholderSelect
+                ref={ageMonthRef}
+                placeholder="3m"
+                defaultValue={formatAge(profile).months}
+                options={Array.from({ length: 12 }, (_, i) => ({
+                  value: i.toString(),
+                  label: `${i}m`
+                }))}
+                className="flex-1 px-4 py-3 rounded-xl border-0 bg-white appearance-none"
+              />
+            </div>
           </div>
         </div>
 
@@ -364,12 +584,12 @@ export default function EditProfileClient({ petId }: Props) {
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Microchip ID
           </label>
-          <input
+          <PlaceholderInput
             ref={microchipRef}
             type="text"
+            placeholder="982000123456789"
             defaultValue={profile?.microchip_id || ""}
-            className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
-            placeholder="077077"
+            className="w-full px-4 py-3 rounded-xl border-0 bg-white"
           />
         </div>
 
@@ -378,14 +598,16 @@ export default function EditProfileClient({ petId }: Props) {
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Neuter Status
           </label>
-          <select
+          <PlaceholderSelect
             ref={neuterRef}
-            defaultValue={profile?.neuter_status ? "Yes" : "No"}
-            className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600 appearance-none"
-          >
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-          </select>
+            placeholder="Not Spayed/Neutered"
+            defaultValue={profile?.neuter_status !== null && profile?.neuter_status !== undefined ? (profile.neuter_status ? "Yes" : "No") : ""}
+            options={[
+              { value: "Yes", label: "Spayed/Neutered" },
+              { value: "No", label: "Not Spayed/Neutered" }
+            ]}
+            className="w-full px-4 py-3 rounded-xl border-0 bg-white appearance-none"
+          />
         </div>
 
         {/* Vaccinated */}
@@ -393,12 +615,12 @@ export default function EditProfileClient({ petId }: Props) {
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Vaccinated
           </label>
-          <input
+          <PlaceholderInput
             ref={vaccinationsRef}
             type="text"
+            placeholder="Rabies, DHPP, Bordetella"
             defaultValue={profile?.vaccinations?.join(", ") || ""}
-            className="w-full px-4 py-3 rounded-xl border-0 bg-white text-gray-600"
-            placeholder="Rabies, DHPP / DAPP"
+            className="w-full px-4 py-3 rounded-xl border-0 bg-white"
           />
         </div>
 
@@ -408,31 +630,84 @@ export default function EditProfileClient({ petId }: Props) {
             Profile Photos
           </label>
           <div className="bg-white rounded-xl p-4">
-            <div className="flex gap-2 items-center">
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                <Image
-                  src={profile?.avatar_url || "/dog.png"}
-                  alt="Pet photo 1"
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-cover"
-                />
+            <div className="space-y-4">
+              {/* Current Avatar */}
+              <div className="flex gap-2 items-center">
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                  <Image
+                    src={
+                      (profile?.avatar_url && Array.isArray(profile.avatar_url) && profile.avatar_url.length > 0) 
+                        ? profile.avatar_url[0] 
+                        : "/dog.png"
+                    }
+                    alt="Current pet avatar"
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="text-sm text-gray-600">
+                  Current Avatar
+                </div>
               </div>
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                <Image
-                  src={profile?.avatar_url || "/dog.png"}
-                  alt="Pet photo 2"
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <button
-                type="button"
-                className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-2xl"
+
+              {/* Profile Photos */}
+              {uploadedImages.filter(url => url && url.trim() !== "").length > 0 && (
+                <div>
+                  <div className="text-sm text-gray-600 mb-2">Profile Photos ({uploadedImages.filter(url => url && url.trim() !== "").length})</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {uploadedImages.filter(url => url && url.trim() !== "").map((url, index) => (
+                      <div key={index} className="relative group">
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                          <Image
+                            src={url}
+                            alt={`Profile photo ${index + 1}`}
+                            width={64}
+                            height={64}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Find the actual index in the original array
+                            const validUrls = uploadedImages.filter(url => url && url.trim() !== "");
+                            const actualIndex = uploadedImages.indexOf(validUrls[index]);
+                            removeImage(actualIndex);
+                          }}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          ×
+                        </button>
+                        {index === 0 && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-xs text-center py-0.5">
+                            Avatar
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Area */}
+              <PhotoUploader
+                uploadOptions={getPetAvatarUploadOptions(petId)}
+                onUploadStart={handleUploadStart}
+                onUploadComplete={handleImageUpload}
+                multiple={true}
+                className="w-full"
+                disabled={isUploading}
               >
-                +
-              </button>
+                <div className="text-center py-4">
+                  <div className="text-sm text-gray-600 mb-1">
+                    {isUploading ? "Uploading..." : "Add More Photos"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Click or drag to upload photos (up to 50MB each)
+                  </div>
+                </div>
+              </PhotoUploader>
             </div>
           </div>
         </div>
@@ -443,22 +718,12 @@ export default function EditProfileClient({ petId }: Props) {
             Pet Tags
           </label>
           <div className="bg-white rounded-xl p-4">
-            <div className="flex flex-wrap gap-2">
-              {(profile?.traits || []).map((trait, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 rounded-full text-sm bg-gray-200 text-gray-700"
-                >
-                  {trait}
-                </span>
-              ))}
-              <button
-                type="button"
-                className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-lg"
-              >
-                +
-              </button>
-            </div>
+            <PlaceholderTags
+              placeholderTags={["Friendly", "Active", "Smart"]}
+              defaultValue={profile?.traits || []}
+              onTagsChange={setCurrentTags}
+              className=""
+            />
           </div>
         </div>
 
@@ -483,34 +748,34 @@ export default function EditProfileClient({ petId }: Props) {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Phone:</label>
-                <input
+                <PlaceholderInput
                   ref={phoneRef}
                   type="tel"
+                  placeholder="(555) 123-4567"
                   defaultValue={owner?.phone || ""}
-                  className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent text-gray-700 focus:border-gray-400 focus:outline-none"
-                  placeholder="Phone number"
+                  className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent focus:border-gray-400 focus:outline-none"
                 />
               </div>
               
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Email:</label>
-                <input
+                <PlaceholderInput
                   ref={emailRef}
                   type="email"
+                  placeholder="john.smith@gmail.com"
                   defaultValue={owner?.email || ""}
-                  className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent text-gray-700 focus:border-gray-400 focus:outline-none"
-                  placeholder="Email address"
+                  className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent focus:border-gray-400 focus:outline-none"
                 />
               </div>
               
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Emergency Doctor:</label>
-                <input
+                <PlaceholderInput
                   ref={vetNameRef}
                   type="text"
+                  placeholder="Dr. Johnson"
                   defaultValue={emergency?.vet?.name || ""}
-                  className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent text-gray-700 focus:border-gray-400 focus:outline-none"
-                  placeholder="Emergency doctor name"
+                  className="w-full px-0 py-1 border-0 border-b border-gray-200 bg-transparent focus:border-gray-400 focus:outline-none"
                 />
               </div>
             </div>
