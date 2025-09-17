@@ -1,5 +1,10 @@
+"use client";
+
 import Image from "next/image";
+import Link from "next/link";
+import { useState, useRef } from "react";
 import SectionHeader from "@/components/ui/SectionHeader";
+import PostComposer from "@/components/posts/PostComposer";
 
 type Post = {
   id: string;
@@ -12,9 +17,28 @@ type Post = {
 type Props = {
   posts: Post[];
   onCreatePost?: () => void;
+  petId?: string;
+  onPostCreated?: () => void;
 };
 
-export default function RecentPosts({ posts, onCreatePost }: Props) {
+export default function RecentPosts({ posts, onCreatePost, petId, onPostCreated }: Props) {
+  const [showComposer, setShowComposer] = useState(false);
+  const composerRef = useRef<HTMLDivElement>(null);
+
+  const handleCreatePost = () => {
+    if (onCreatePost) {
+      onCreatePost();
+    } else if (petId) {
+      setShowComposer(true);
+      // Wait a tick so the composer mounts, then scroll into view
+      setTimeout(() => composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    }
+  };
+
+  const handlePostCreated = () => {
+    setShowComposer(false);
+    onPostCreated?.();
+  };
   return (
     <section className="mb-2 relative z-10">
       <div className="flex items-center justify-between section-header-spacing section-padding">
@@ -25,7 +49,7 @@ export default function RecentPosts({ posts, onCreatePost }: Props) {
           className="mb-0"
         />
         <button
-          onClick={onCreatePost}
+          onClick={handleCreatePost}
           className="px-4 py-2 rounded-full text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all"
           style={{ backgroundColor: "#EC5914" }}
         >
@@ -59,14 +83,16 @@ export default function RecentPosts({ posts, onCreatePost }: Props) {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
               <div className="absolute bottom-2 left-2 right-2 text-white">
-                <div className="text-[9px] opacity-80 mb-1">
-                  {post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: '2-digit', 
-                    day: '2-digit' 
-                  }).replace(/\//g, '/') : "2025/01/10"}
+                <div className="flex items-center justify-between mb-1">
+                  <div className="font-bold text-xs">{post.title || "Title Text"}</div>
+                  <div className="text-[9px] opacity-80">
+                    {post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: '2-digit', 
+                      day: '2-digit' 
+                    }).replace(/\//g, '/') : "2025/01/10"}
+                  </div>
                 </div>
-                <div className="font-bold text-xs mb-1">{post.title || "Title Text"}</div>
                 <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">{post.content}</div>
               </div>
             </div>
@@ -89,8 +115,8 @@ export default function RecentPosts({ posts, onCreatePost }: Props) {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                 <div className="absolute bottom-2 left-2 right-2 text-white">
                   <div className="text-[9px] opacity-80 mb-1">2025/01/10</div>
-                  <div className="font-bold text-xs mb-1">Title Text</div>
-                  <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">Sample post content...</div>
+                  <div className="font-bold text-xs mb-1">It's quiet here…</div>
+                  <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">Start your first post!</div>
                 </div>
               </div>
             </div>
@@ -104,6 +130,16 @@ export default function RecentPosts({ posts, onCreatePost }: Props) {
         <div className="w-2 h-2 rounded-full bg-white/60" />
         <div className="w-2 h-2 rounded-full bg-white/60" />
       </div>
+
+      {/* Post Composer - shown when creating a new post */}
+      {showComposer && petId && (
+        <div ref={composerRef} className="mt-6">
+          <PostComposer
+            petId={petId}
+            onPostCreated={handlePostCreated}
+          />
+        </div>
+      )}
     </section>
   );
 }

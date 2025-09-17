@@ -46,10 +46,10 @@ export interface PetWithDetails extends Pet {
   pet_id: string; // For compatibility with existing components
   vaccinations: string[];
   allergies: string[];
-  microchip_id: string;
-  neuter_status: boolean;
-  gender: string;
-  traits: string[];
+  microchip_id?: string;
+  neuter_status?: boolean | null;
+  gender?: string;
+  traits?: string[];
   year?: number;
   month?: number;
   contact_prefs?: any;
@@ -166,13 +166,12 @@ export class PetsDataAccess {
       const formattedPet: PetWithDetails = {
         ...pet,
         pet_id: id, // Add pet_id for compatibility with existing components
-        vaccinations: vaccinations?.map((v: any) => v.vaccine_name) || [],
-        allergies: pet.allergy_note ? [pet.allergy_note] : [], // Convert allergy_note to array
-        // Use placeholder data when fields are empty - these will show as gray placeholder text
-        microchip_id: pet.microchip_id || "982000123456789", // Placeholder: example microchip ID
-        neuter_status: pet.neuter_status !== null ? pet.neuter_status : false, // Default to false if null
-        gender: pet.gender || "unknown", // Default to unknown if empty
-        traits: pet.traits ? (Array.isArray(pet.traits) ? pet.traits : [pet.traits]) : ["Friendly", "Active", "Smart"], // Placeholder traits
+        vaccinations: Array.isArray(pet.vaccinated) ? pet.vaccinated : [], // Use vaccinated array from database
+        allergies: Array.isArray(pet.allergy_note) ? pet.allergy_note : [], // Use allergy_note array from database
+        microchip_id: pet.microchip_id || undefined,
+        neuter_status: pet.neuter_status,
+        gender: pet.gender || "unknown",
+        traits: Array.isArray(pet.traits) ? pet.traits : [],
         contact_prefs: contactPrefs
       };
 

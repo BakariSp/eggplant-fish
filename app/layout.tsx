@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Quicksand, Baloo_2 } from "next/font/google";
 import "./globals.css";
 import { isWireframeEnabled } from "@/lib/wireframe";
+import SiteHeader from "@/components/layout/SiteHeader";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const geistSans = Geist({
@@ -12,6 +13,18 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const quicksand = Quicksand({
+  variable: "--font-quicksand",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const baloo2 = Baloo_2({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -27,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} ${baloo2.variable} antialiased`}
       >
         {/* Wireframe overlay via query ?wf=1 */}
         <AuthProvider>
@@ -35,6 +48,7 @@ export default function RootLayout({
             className={isWireframeEnabled() ? "[&_*]:!bg-transparent [&_.border]:!border-gray-300" : undefined}
             style={isWireframeEnabled() ? { outline: "1px dashed #ccc" } : undefined}
           >
+            <SiteHeader />
             {children}
           </div>
         </AuthProvider>

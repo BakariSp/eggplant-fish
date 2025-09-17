@@ -16,8 +16,7 @@ type Profile = {
   name?: string;
   breed?: string;
   birthdate?: string;
-  vaccinated?: boolean;
-  vaccinations?: string[];
+  vaccinated?: string[];
   allergies?: string[];
   microchip_id?: string;
   neuter_status?: boolean;
@@ -44,6 +43,8 @@ type Props = { petId: string };
 export default function EditProfileClient({ petId }: Props) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const DEFAULT_TAGS = ["Active", "Tries to eat things", "Friendly with cats", "Leash trained"];
+  const DEFAULT_ALLERGIES = ["Peanuts", "Chicken", "Grass"];
   const [profile, setProfile] = useState<Profile | null>(null);
   const [owner, setOwner] = useState<Owner | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -55,6 +56,7 @@ export default function EditProfileClient({ petId }: Props) {
   // Form refs for collecting data
   const petNameRef = useRef<HTMLInputElement>(null);
   const ownerNameRef = useRef<HTMLInputElement>(null);
+  const breedRef = useRef<HTMLInputElement>(null);
   const genderRef = useRef<HTMLSelectElement>(null);
   const ageYearRef = useRef<HTMLSelectElement>(null);
   const ageMonthRef = useRef<HTMLSelectElement>(null);
@@ -65,6 +67,8 @@ export default function EditProfileClient({ petId }: Props) {
   const emailRef = useRef<HTMLInputElement>(null);
   const vetNameRef = useRef<HTMLInputElement>(null);
   const [currentTags, setCurrentTags] = useState<string[]>([]);
+  const [currentAllergies, setCurrentAllergies] = useState<string[]>([]);
+  const [currentVaccinations, setCurrentVaccinations] = useState<string[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -81,7 +85,7 @@ export default function EditProfileClient({ petId }: Props) {
       try {
         const supabase = getBrowserSupabaseClient();
         
-        // Fetch pet profile
+        // Fetch pet profile from database
         const { data: petData } = await supabase
           .from("pets")
           .select("*")
@@ -121,13 +125,12 @@ export default function EditProfileClient({ petId }: Props) {
             name: petData.name || "",
             breed: petData.breed || "",
             birthdate: petData.birthdate || "",
-            vaccinated: petData.vaccinated || false,
-            vaccinations: petData.vaccinated ? ["Rabies", "DHPP", "Bordetella"] : [],
+            vaccinated: Array.isArray(petData.vaccinated) ? petData.vaccinated : [],
             microchip_id: petData.microchip_id || "", // Keep null as null, empty string as empty string
-            allergies: petData.allergy_note ? petData.allergy_note.split(",").map((s: string) => s.trim()) : [],
+            allergies: Array.isArray(petData.allergy_note) ? petData.allergy_note : DEFAULT_ALLERGIES,
             neuter_status: petData.neuter_status, // Keep null as null
             gender: petData.gender || "", // Keep null as empty string for placeholder
-            traits: petData.traits ? (Array.isArray(petData.traits) ? petData.traits : [petData.traits]) : [],
+            traits: petData.traits ? (Array.isArray(petData.traits) ? petData.traits : [petData.traits]) : DEFAULT_TAGS,
             avatar_url: validAvatarUrls,
             year: petData.year || null, // Load year field
             month: petData.month || null // Load month field
@@ -135,8 +138,14 @@ export default function EditProfileClient({ petId }: Props) {
           console.log("📋 Profile data loaded:", profile);
           setProfile(profile);
           
-          // Initialize current tags
-          setCurrentTags(profile.traits || []);
+          // Initialize current tags and allergies (use defaults if DB empty)
+          setCurrentTags(profile.traits && profile.traits.length > 0 ? profile.traits : DEFAULT_TAGS);
+          setCurrentAllergies(profile.allergies && profile.allergies.length > 0 ? profile.allergies : DEFAULT_ALLERGIES);
+          setCurrentVaccinations(profile.vaccinated && profile.vaccinated.length > 0 
+            ? profile.vaccinated 
+            : (Array.isArray(petData.vaccinated) && petData.vaccinated.length > 0 
+                ? petData.vaccinated 
+                : ["Rabies", "DHPP / DAPP"])) ;
           
           // Load existing profile photos from avatar_url array
           if (petData.avatar_url && Array.isArray(petData.avatar_url)) {
@@ -151,9 +160,10 @@ export default function EditProfileClient({ petId }: Props) {
         
         if (contactData) {
           const owner: Owner = {
-            name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
+            name: (contactData as any)?.owner_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
             phone: contactData.phone || "",
-            email: contactData.email || ""
+            email: contactData.email || user?.email || "",
+            photo_url: user?.user_metadata?.avatar_url || user?.user_metadata?.picture
           };
           console.log("👤 Contact data loaded:", owner);
           setOwner(owner);
@@ -162,7 +172,8 @@ export default function EditProfileClient({ petId }: Props) {
           setOwner({
             name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
             phone: "",
-            email: ""
+            email: user?.email || "",
+            photo_url: user?.user_metadata?.avatar_url || user?.user_metadata?.picture
           });
         }
 
@@ -205,23 +216,35 @@ export default function EditProfileClient({ petId }: Props) {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleLogout = async () => {
-    const supabase = getBrowserSupabaseClient();
-    await supabase.auth.signOut();
-    router.push("/");
-  };
+  
 
   const formatAge = (profile?: any): { years: string; months: string } => {
     if (!profile?.year && !profile?.month) return { years: "2", months: "3" }; // Default placeholder
-    return { 
+    
+    const result = { 
       years: (profile.year || 0).toString(), 
       months: (profile.month || 0).toString() 
     };
+    
+    console.log("🔢 formatAge called:", {
+      profileYear: profile?.year,
+      profileMonth: profile?.month,
+      result
+    });
+    
+    return result;
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("🔥 SAVE BUTTON CLICKED - Form submission started");
+    console.log("🔄 Current saving state:", saving);
+    
+    // Prevent double submission
+    if (saving) {
+      console.log("⚠️ Already saving, ignoring duplicate submission");
+      return;
+    }
     
     // Debug: Check client-side authentication
     console.log("🔐 Client-side auth check:", {
@@ -239,6 +262,7 @@ export default function EditProfileClient({ petId }: Props) {
       // Collect form data
       const petName = petNameRef.current?.value || "";
       const ownerName = ownerNameRef.current?.value || "";
+      const breed = breedRef.current?.value || "";
       const gender = genderRef.current?.value as "male" | "female" | "unknown" || "unknown";
       const ageYears = ageYearRef.current?.value || "";
       const ageMonths = ageMonthRef.current?.value || "";
@@ -252,6 +276,7 @@ export default function EditProfileClient({ petId }: Props) {
       console.log("📝 Form data collected:", {
         petName,
         ownerName,
+        breed,
         gender,
         ageYears,
         ageMonths,
@@ -266,13 +291,18 @@ export default function EditProfileClient({ petId }: Props) {
         currentMonth: profile?.month
       });
 
-      // Update pet profile
+      // Update existing pet profile
       const petUpdates: any = {};
       
       // Handle pet name - save if different from current value
       if (petName !== profile?.name) {
         // If the value is the placeholder text, save empty string
         petUpdates.name = petName === "Buddy" ? "" : petName;
+      }
+
+      // Handle breed - save if different from current value
+      if (breed !== profile?.breed) {
+        petUpdates.breed = breed === "French Bulldog" ? "" : breed;
       }
       
       // Handle owner name - update user metadata if different from current value
@@ -288,6 +318,14 @@ export default function EditProfileClient({ petId }: Props) {
           alert(`Warning: Could not save owner name: ${updateResult.reason}`);
         } else {
           console.log("✅ Owner name updated successfully");
+          try {
+            // Also update client session metadata so Header reflects immediately
+            await supabase.auth.updateUser({
+              data: { full_name: actualOwnerName }
+            });
+          } catch (e) {
+            console.warn("Failed to update client session metadata, will reflect after refresh", e);
+          }
         }
       }
       
@@ -339,28 +377,26 @@ export default function EditProfileClient({ petId }: Props) {
         petUpdates.avatar_url = uploadedImages;
       }
       
-      // Handle vaccinations - save if different from current value
-      if (vaccinations !== profile?.allergies?.join(", ")) {
-        const vaccinationText = vaccinations === "Rabies, DHPP, Bordetella" ? "" : vaccinations.trim();
-        petUpdates.vaccinated = vaccinationText.length > 0;
-        petUpdates.allergy_note = vaccinationText || null; // Store vaccinations in allergy_note for now
+      // Handle vaccinations - save as array to DB
+      if (Array.isArray(currentVaccinations)) {
+        petUpdates.vaccinated = currentVaccinations;
       }
       
-      // Handle traits - save if different from current value
+      // Handle traits - save if different from current value (including defaults)
       const currentTraits = profile?.traits || [];
       const isTraitsChanged = JSON.stringify(currentTags.sort()) !== JSON.stringify(currentTraits.sort());
       if (isTraitsChanged) {
-        // Check if current tags are just placeholder tags
-        const placeholderTags = ["Friendly", "Active", "Smart"];
-        const isPlaceholderTags = currentTags.length === placeholderTags.length && 
-          currentTags.every(tag => placeholderTags.includes(tag));
-        
-        if (isPlaceholderTags) {
-          petUpdates.traits = null; // Save null if placeholder tags
-        } else {
-          petUpdates.traits = currentTags; // Save actual tags
-        }
-        console.log("🏷️ Saving traits:", { currentTags, isPlaceholderTags, savedValue: petUpdates.traits });
+        petUpdates.traits = currentTags;
+        console.log("🏷️ Saving traits:", { currentTags });
+      }
+      
+      // Handle allergies - save if different from current value (including defaults)
+      const profileAllergies = profile?.allergies || [];
+      const isAllergiesChanged = JSON.stringify(currentAllergies.sort()) !== JSON.stringify(profileAllergies.sort());
+      if (isAllergiesChanged) {
+        // Save as array for DB array column compatibility
+        petUpdates.allergy_note = currentAllergies;
+        console.log("🤧 Saving allergies:", { currentAllergies });
       }
       
       console.log("Updating pet profile:", { petId, petUpdates });
@@ -385,13 +421,17 @@ export default function EditProfileClient({ petId }: Props) {
       }
 
       // Update contact preferences - only update if not placeholder values
-      const contactUpdates = {
+      const contactUpdates: any = {
         pet_id: petId,
         phone: (phone && phone !== "(555) 123-4567") ? phone : null,
         email: (email && email !== "john.smith@gmail.com") ? email : null,
         show_phone: !!(phone && phone.trim() && phone !== "(555) 123-4567"),
         show_email: !!(email && email.trim() && email !== "john.smith@gmail.com")
       };
+      // Also persist owner's display name into contact_prefs.owner_name if available
+      if (ownerName && ownerName !== "John Smith") {
+        (contactUpdates as any).owner_name = ownerName;
+      }
       
       console.log("🔄 Updating contact preferences:", contactUpdates);
       
@@ -437,6 +477,7 @@ export default function EditProfileClient({ petId }: Props) {
     } catch (error) {
       console.error("Failed to save profile:", error);
       alert("Failed to save profile. Please try again.");
+    } finally {
       setSaving(false);
     }
   };
@@ -451,53 +492,7 @@ export default function EditProfileClient({ petId }: Props) {
 
   return (
     <div className="max-w-md mx-auto">
-      {/* Header */}
-      <header className="flex items-center justify-between py-4">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => router.push(`/dashboard/pets/${petId}/posts`)}
-            className="text-lg"
-            aria-label="Go back"
-          >
-            ←
-          </button>
-          <div className="text-lg font-semibold">EGGPLANT.FISH</div>
-        </div>
-        <div className="flex gap-2">
-          {authLoading ? (
-            <div className="text-sm text-gray-500">Loading...</div>
-          ) : user ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">
-                {user.email}
-              </span>
-              <button 
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm rounded-full bg-black text-white hover:bg-gray-800"
-              >
-                Log Out
-              </button>
-            </div>
-          ) : (
-            <>
-              <button 
-                onClick={() => router.push("/register")}
-                className="px-4 py-2 text-sm rounded-full border border-gray-300 bg-white hover:bg-gray-50"
-              >
-                Sign Up
-              </button>
-              <button 
-                onClick={() => router.push("/login")}
-                className="px-4 py-2 text-sm rounded-full bg-black text-white hover:bg-gray-800"
-              >
-                Login
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
-      <div className="border-t border-gray-300 mb-8" />
+      
 
       <h1 className="text-2xl font-bold text-center mb-8" style={{ color: "#2B1B12" }}>
         Edit Profile
@@ -579,15 +574,29 @@ export default function EditProfileClient({ petId }: Props) {
           </div>
         </div>
 
+        {/* Pet Breed - full width on next line */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
+            Breed
+          </label>
+          <PlaceholderInput
+            ref={breedRef}
+            type="text"
+            placeholder="French Bulldog"
+            defaultValue={profile?.breed || ""}
+            className="w-full px-4 py-3 rounded-xl border-0 bg-white"
+          />
+        </div>
+
         {/* Microchip ID */}
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Microchip ID
           </label>
-          <PlaceholderInput
+              <PlaceholderInput
             ref={microchipRef}
             type="text"
-            placeholder="982000123456789"
+                placeholder="077077"
             defaultValue={profile?.microchip_id || ""}
             className="w-full px-4 py-3 rounded-xl border-0 bg-white"
           />
@@ -598,30 +607,31 @@ export default function EditProfileClient({ petId }: Props) {
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Neuter Status
           </label>
-          <PlaceholderSelect
+            <PlaceholderSelect
             ref={neuterRef}
             placeholder="Not Spayed/Neutered"
             defaultValue={profile?.neuter_status !== null && profile?.neuter_status !== undefined ? (profile.neuter_status ? "Yes" : "No") : ""}
             options={[
-              { value: "Yes", label: "Spayed/Neutered" },
-              { value: "No", label: "Not Spayed/Neutered" }
+                { value: "Yes", label: "Yes" },
+                { value: "No", label: "No" }
             ]}
-            className="w-full px-4 py-3 rounded-xl border-0 bg-white appearance-none"
+              className="w-full px-4 py-3 rounded-xl border-0 bg-white appearance-none"
           />
         </div>
 
-        {/* Vaccinated */}
+        {/* Vaccinated (as tags) */}
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Vaccinated
           </label>
-          <PlaceholderInput
-            ref={vaccinationsRef}
-            type="text"
-            placeholder="Rabies, DHPP, Bordetella"
-            defaultValue={profile?.vaccinations?.join(", ") || ""}
-            className="w-full px-4 py-3 rounded-xl border-0 bg-white"
-          />
+          <div className="bg-white rounded-xl p-4">
+            <PlaceholderTags
+              placeholderTags={["Rabies", "DHPP / DAPP"]}
+              defaultValue={currentVaccinations}
+              onTagsChange={setCurrentVaccinations}
+              className=""
+            />
+          </div>
         </div>
 
         {/* Profile Photos */}
@@ -631,30 +641,9 @@ export default function EditProfileClient({ petId }: Props) {
           </label>
           <div className="bg-white rounded-xl p-4">
             <div className="space-y-4">
-              {/* Current Avatar */}
-              <div className="flex gap-2 items-center">
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                  <Image
-                    src={
-                      (profile?.avatar_url && Array.isArray(profile.avatar_url) && profile.avatar_url.length > 0) 
-                        ? profile.avatar_url[0] 
-                        : "/dog.png"
-                    }
-                    alt="Current pet avatar"
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="text-sm text-gray-600">
-                  Current Avatar
-                </div>
-              </div>
-
               {/* Profile Photos */}
               {uploadedImages.filter(url => url && url.trim() !== "").length > 0 && (
                 <div>
-                  <div className="text-sm text-gray-600 mb-2">Profile Photos ({uploadedImages.filter(url => url && url.trim() !== "").length})</div>
                   <div className="flex gap-2 flex-wrap">
                     {uploadedImages.filter(url => url && url.trim() !== "").map((url, index) => (
                       <div key={index} className="relative group">
@@ -679,11 +668,6 @@ export default function EditProfileClient({ petId }: Props) {
                         >
                           ×
                         </button>
-                        {index === 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-xs text-center py-0.5">
-                            Avatar
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -719,9 +703,24 @@ export default function EditProfileClient({ petId }: Props) {
           </label>
           <div className="bg-white rounded-xl p-4">
             <PlaceholderTags
-              placeholderTags={["Friendly", "Active", "Smart"]}
+              placeholderTags={DEFAULT_TAGS}
               defaultValue={profile?.traits || []}
               onTagsChange={setCurrentTags}
+              className=""
+            />
+          </div>
+        </div>
+
+        {/* Allergies */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
+            Allergies
+          </label>
+          <div className="bg-white rounded-xl p-4">
+            <PlaceholderTags
+              placeholderTags={DEFAULT_ALLERGIES}
+              defaultValue={profile?.allergies || []}
+              onTagsChange={setCurrentAllergies}
               className=""
             />
           </div>
@@ -734,13 +733,50 @@ export default function EditProfileClient({ petId }: Props) {
           </label>
           <div className="bg-white rounded-xl p-6">
             <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200">
-                <Image
-                  src={owner?.photo_url || "/main.jpg"}
-                  alt="Owner photo"
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200">
+                  <Image
+                    src={owner?.photo_url || "/main.jpg"}
+                    alt="Owner photo"
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('owner-avatar-input')?.click()}
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-white shadow"
+                  style={{ backgroundColor: "#8f743c" }}
+                  aria-label="Change avatar"
+                  title="Change avatar"
+                >
+                  ✎
+                </button>
+                <input
+                  id="owner-avatar-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const { success, url, error } = await (await import('@/lib/storage')).uploadImage(file, {
+                      bucket: 'user-image',
+                      folder: `owner/${user?.id || 'unknown'}`,
+                      maxSizeBytes: 50 * 1024 * 1024,
+                    });
+                    if (success && url) {
+                      setOwner(prev => ({ ...(prev || {}), photo_url: url }));
+                      try {
+                        await updateUserProfile({ userId: user!.id, avatarUrl: url });
+                      } catch (err) {
+                        console.error('Failed to persist avatar url to user profile', err);
+                      }
+                    } else {
+                      alert(error || 'Upload failed');
+                    }
+                  }}
                 />
               </div>
             </div>

@@ -53,14 +53,16 @@ export default function RecentPostsContent({ posts, onCreatePost }: Props) {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
               <div className="absolute bottom-2 left-2 right-2 text-white">
-                <div className="text-[9px] opacity-80 mb-1">
-                  {post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: '2-digit', 
-                    day: '2-digit' 
-                  }).replace(/\//g, '/') : "2025/01/10"}
+                <div className="flex items-center justify-between mb-1">
+                  <div className="font-bold text-xs">{post.title || "Title Text"}</div>
+                  <div className="text-[9px] opacity-80">
+                    {post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: '2-digit', 
+                      day: '2-digit' 
+                    }).replace(/\//g, '/') : "2025/01/10"}
+                  </div>
                 </div>
-                <div className="font-bold text-xs mb-1">{post.title || "Title Text"}</div>
                 <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">{post.content}</div>
               </div>
             </div>
@@ -83,8 +85,8 @@ export default function RecentPostsContent({ posts, onCreatePost }: Props) {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                 <div className="absolute bottom-2 left-2 right-2 text-white">
                   <div className="text-[9px] opacity-80 mb-1">2025/01/10</div>
-                  <div className="font-bold text-xs mb-1">Title Text</div>
-                  <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">Sample post content...</div>
+                  <div className="font-bold text-xs mb-1">It's quiet here…</div>
+                  <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">Start your first post!</div>
                 </div>
               </div>
             </div>

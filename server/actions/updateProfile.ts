@@ -13,8 +13,8 @@ const Input = z.object({
     .optional()
     .refine((s) => s === undefined || s === null || !Number.isNaN(Date.parse(s)), "Invalid date"),
   avatar_url: z.array(z.string().url()).optional(),
-  vaccinated: z.boolean().optional(),
-  allergy_note: z.string().max(500).nullable().optional(),
+  vaccinated: z.array(z.string()).optional(),
+  allergy_note: z.union([z.string().max(500), z.array(z.string())]).nullable().optional(),
   // New fields with placeholder support
   gender: z.enum(["male", "female", "unknown"]).optional(),
   microchip_id: z.string().max(50).nullable().optional(),

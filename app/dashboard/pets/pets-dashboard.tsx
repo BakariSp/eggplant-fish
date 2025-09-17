@@ -12,12 +12,14 @@ interface Pet {
   breed: string;
   avatar_url: string | string[];
   created_at: string;
+  year: number | null;
+  month: number | null;
 }
 
 export default function PetsDashboard() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function PetsDashboard() {
         // Fetch user's pets
         const { data: pets } = await supabase
           .from("pets")
-          .select("id, slug, name, breed, avatar_url, created_at")
+          .select("id, slug, name, breed, avatar_url, created_at, year, month")
           .eq("owner_user_id", session.user.id)
           .order("created_at", { ascending: false });
 
@@ -56,20 +58,97 @@ export default function PetsDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FCEFDC" }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8f743c] mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your pets...</p>
         </div>
+        {/* Search placed between banner and header */}
+        <div className="relative mt-4 mb-6 z-0">
+          <input
+            type="text"
+            placeholder="Search"
+            className="w-full h-12 rounded-full bg-white shadow-sm px-5 pr-10 outline-none focus:ring-2"
+            style={{ border: "2px solid #EC5914", color: "#2B1F1B" }}
+          />
+          <div
+            className="absolute top-1/2 -translate-y-1/2 right-4 text-[#EC5914]"
+            aria-hidden
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+        </div>
+
+        
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Welcome Banner */}
+        <div
+          className="relative rounded-2xl p-4 mb-6 shadow-sm min-h-[120px]"
+          style={{
+            background: "linear-gradient(135deg, #EC5914 0%, #D4490F 100%)",
+          }}
+        >
+          <div className="grid grid-cols-[30%_70%] items-center gap-4">
+            <div className="h-28 aspect-square rounded-xl overflow-hidden bg-white/10">
+              <img
+                src={
+                  user?.user_metadata?.avatar_url ||
+                  user?.user_metadata?.picture ||
+                  "/main.jpg"
+                }
+                alt="Owner avatar"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="text-white pl-2 sm:pl-4">
+              <div className="text-[12px] opacity-90 mb-1">Welcome Back!</div>
+              <div
+                className="text-2xl sm:text-3xl font-extrabold leading-snug"
+                style={{ fontFamily: "var(--font-display), var(--font-quicksand), Arial" }}
+              >
+                {(user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Pet Owner") + "’s"}
+                <br />
+                Pet Dashboard
+              </div>
+            </div>
+          </div>
+          <button
+            aria-label="Notifications"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-[#2B1F1B] flex items-center justify-center shadow ring-1 ring-black/10"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22c1.1 0 2-.9 2-2H10c0 1.1.9 2 2 2Z"/>
+              <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2Z"/>
+            </svg>
+          </button>
+        </div>
+        {/* Search between banner and header */}
+        <div className="relative mt-2 mb-6 z-0">
+          <input
+            type="text"
+            placeholder="Search"
+            className="w-full h-12 rounded-full bg-[color:var(--background)] shadow-sm px-5 pr-12 outline-none focus:ring-0 placeholder-[#8f743c]"
+            style={{ border: "2px solid #EC5914" }}
+          />
+          <div className="absolute top-1/2 -translate-y-1/2 right-4 text-[#EC5914]" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+        </div>
+
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Pets</h1>
             <p className="text-gray-600 mt-2">Manage your pet profiles and posts</p>
@@ -84,10 +163,10 @@ export default function PetsDashboard() {
 
         {/* Pets Grid */}
         {pets && pets.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {pets.map((pet) => (
               <div key={pet.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="aspect-square bg-gray-200 relative">
+                <div className="h-48 bg-gray-200 relative">
                   {(() => {
                     // Get first valid avatar URL
                     let avatarSrc = null;
@@ -115,9 +194,21 @@ export default function PetsDashboard() {
                   })()}
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-1">
-                    {pet.name || "Unnamed Pet"}
-                  </h3>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold text-lg text-gray-900">
+                      {pet.name || "Unnamed Pet"}
+                    </h3>
+                    <span className="text-gray-500 text-sm">
+                      {(() => {
+                        const years = pet.year || 0;
+                        const months = pet.month || 0;
+                        let ageParts = [];
+                        if (years > 0) ageParts.push(`${years}y`);
+                        if (months > 0) ageParts.push(`${months}m`);
+                        return ageParts.join(" ") || "0m";
+                      })()}
+                    </span>
+                  </div>
                   <p className="text-gray-600 text-sm mb-3">{pet.breed || "Mixed Breed"}</p>
                   <div className="flex gap-2">
                     <Link
@@ -161,17 +252,7 @@ export default function PetsDashboard() {
           </div>
         )}
 
-        {/* Logout */}
-        <div className="mt-12 text-center">
-          <form action="/api/auth/logout" method="post">
-            <button
-              type="submit"
-              className="text-gray-500 hover:text-gray-700 text-sm"
-            >
-              Sign Out
-            </button>
-          </form>
-        </div>
+        
       </div>
     </main>
   );

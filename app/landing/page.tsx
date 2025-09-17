@@ -1,20 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
-import AuthNavbar from "@/components/layout/AuthNavbar";
+// Removed legacy AuthNavbar in favor of global SiteHeader
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>
-      {/* Navigation */}
-      <AuthNavbar />
-      
-      {/* Header */}
-      <header className="px-6 py-4">
-        <div className="text-lg font-bold text-[#8f743c]">
-          EGGPLANT.FISH
-        </div>
-      </header>
 
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center px-6 py-12 text-center">

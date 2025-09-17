@@ -92,9 +92,9 @@ export default function PhotoUploader({
         onDrop={handleDrop}
         className={`
           cursor-pointer transition-all duration-200
-          ${dragOver ? "bg-blue-50 border-blue-300" : ""}
-          ${disabled || isUploading ? "cursor-not-allowed opacity-50" : "hover:bg-gray-50"}
-          ${className.includes("border") ? "" : "border-2 border-dashed border-gray-300 rounded-lg p-4"}
+          ${dragOver ? "bg-[var(--brand-50)] border-[color:var(--brand-300)]" : ""}
+          ${disabled || isUploading ? "cursor-not-allowed opacity-50" : "hover:bg-[var(--brand-50)]"}
+          ${className.includes("border") ? "" : "border-2 border-dashed border-[color:var(--brand-300)] rounded-lg p-4"}
         `}
       >
         {children || (

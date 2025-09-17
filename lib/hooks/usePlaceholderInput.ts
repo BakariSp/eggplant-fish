@@ -149,12 +149,20 @@ export function usePlaceholderSelect({
  */
 export function usePlaceholderTags({
   placeholderTags,
-  defaultValue = []
+  defaultValue = [],
+  fallbackTag = "None"
 }: {
   placeholderTags: string[];
   defaultValue?: string[];
+  fallbackTag?: string;
 }) {
-  const [tags, setTags] = useState<string[]>(defaultValue);
+  // Initialize with actual data if provided, otherwise use placeholder logic
+  const [tags, setTags] = useState<string[]>(() => {
+    if (defaultValue.length > 0) {
+      return defaultValue;
+    }
+    return placeholderTags; // Start with placeholder tags
+  });
   const [isPlaceholder, setIsPlaceholder] = useState(defaultValue.length === 0);
 
   const displayTags = isPlaceholder ? placeholderTags : tags;
@@ -163,33 +171,36 @@ export function usePlaceholderTags({
     if (isPlaceholder) {
       setIsPlaceholder(false);
       setTags([tag]);
-    } else {
-      setTags(prev => [...prev, tag]);
-    }
-  }, [isPlaceholder]);
-
-  const removeTag = useCallback((index: number) => {
-    if (isPlaceholder) {
-      // When removing placeholder tags, switch to real tags mode
-      const newPlaceholderTags = placeholderTags.filter((_, i) => i !== index);
-      if (newPlaceholderTags.length === 0) {
-        // If all placeholder tags are removed, switch to empty real tags
-        setIsPlaceholder(false);
-        setTags([]);
-      } else {
-        // Update placeholder tags
-        setTags(newPlaceholderTags);
-      }
       return;
     }
-    
-    const newTags = tags.filter((_, i) => i !== index);
-    setTags(newTags);
-    
-    if (newTags.length === 0) {
-      setIsPlaceholder(true);
-    }
-  }, [tags, isPlaceholder, placeholderTags]);
+    setTags(prev => (prev.length === 1 && prev[0] === fallbackTag ? [tag] : [...prev, tag]));
+  }, [isPlaceholder, fallbackTag]);
+
+  const removeTag = useCallback((index: number) => {
+    setTags(prevTags => {
+      if (isPlaceholder) {
+        // When removing placeholder tags, switch to real tags mode
+        const newPlaceholderTags = placeholderTags.filter((_, i) => i !== index);
+        if (newPlaceholderTags.length === 0) {
+          // If all placeholder tags are removed, provide a minimal explicit tag
+          setIsPlaceholder(false);
+          return [fallbackTag];
+        } else {
+          // Update placeholder tags
+          return newPlaceholderTags;
+        }
+      }
+      
+      const newTags = prevTags.filter((_, i) => i !== index);
+      if (newTags.length === 0) {
+        // When all user tags are removed, keep a minimal explicit tag
+        setIsPlaceholder(false);
+        return [fallbackTag];
+      } else {
+        return newTags;
+      }
+    });
+  }, [isPlaceholder, placeholderTags, fallbackTag]);
 
   const reset = useCallback(() => {
     setTags([]);

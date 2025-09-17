@@ -102,13 +102,6 @@ export default function VerifyPage() {
         />
       </div>
 
-      {/* Header */}
-      <header className="relative z-10 px-6 py-4">
-        <div className="text-lg font-bold" style={{ color: "#FCEFDC" }}>
-          EGGPLANT.FISH
-        </div>
-      </header>
-
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-6">
         <div className="w-full max-w-sm space-y-8">

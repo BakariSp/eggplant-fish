@@ -6,13 +6,14 @@ import { getAdminSupabaseClient } from "@/lib/supabase";
 const Input = z.object({
   userId: z.string().uuid(),
   fullName: z.string().min(1).max(100).optional(),
+  avatarUrl: z.string().url().optional(),
 });
 
 export async function updateUserProfile(raw: unknown) {
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return { ok: false as const, reason: "Invalid input" };
   
-  const { userId, fullName } = parsed.data;
+  const { userId, fullName, avatarUrl } = parsed.data;
   
   try {
     const adminSupabase = getAdminSupabaseClient();
@@ -20,7 +21,9 @@ export async function updateUserProfile(raw: unknown) {
     // Update user metadata
     const { error } = await adminSupabase.auth.admin.updateUserById(userId, {
       user_metadata: {
-        full_name: fullName || null
+        full_name: fullName || null,
+        avatar_url: avatarUrl || undefined,
+        picture: avatarUrl || undefined,
       }
     });
     

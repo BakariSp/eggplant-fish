@@ -92,13 +92,6 @@ export default function RegisterPage() {
         />
       </div>
 
-      {/* Header */}
-      <header className="relative z-10 px-6 py-4">
-        <div className="text-lg font-bold text-[#8f743c]">
-          EGGPLANT.FISH
-        </div>
-      </header>
-
       {/* Content */}
       <div className="relative z-10 flex flex-col justify-center px-6 py-8 min-h-[calc(100vh-80px)]">
         <div className="w-full max-w-sm mx-auto space-y-6">

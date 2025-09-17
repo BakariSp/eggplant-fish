@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import PostComposer from "@/components/posts/PostComposer";
-import ProfileSummary from "@/components/posts/ProfileSummary";
 import SectionHeader from "@/components/ui/SectionHeader";
 // Removed EmergencyPanel per new design
 import RecentPosts from "@/components/profile/RecentPosts";
@@ -11,7 +10,15 @@ import RecentPostsContent from "@/components/profile/RecentPostsContent";
 import PostLibrary from "@/components/profile/PostLibrary";
 import OwnerInfo from "@/components/profile/OwnerInfo";
 
-type Props = { petId: string };
+type Props = { 
+  petId: string;
+  ownerInfo?: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    photo_url?: string;
+  } | null;
+};
 
 type MockPost = {
   id: string;
@@ -24,12 +31,9 @@ type MockPost = {
   tags?: string[];
 };
 
-export default function PostsClient({ petId }: Props) {
+export default function PostsClient({ petId, ownerInfo }: Props) {
   const [posts, setPosts] = useState<MockPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
-  const [emergency, setEmergency] = useState<Record<string, unknown> | null>(null);
-  const [owner, setOwner] = useState<Record<string, unknown> | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const composerRef = useRef<HTMLDivElement>(null);
   const [showComposer, setShowComposer] = useState(false);
@@ -67,50 +71,9 @@ export default function PostsClient({ petId }: Props) {
           if (mounted) setPosts([]);
         }
 
-        // Load profile from database
-        const profileResponse = await fetch(`/api/pets/${petId}`);
-        if (profileResponse.ok) {
-          const responseText = await profileResponse.text();
-          if (responseText) {
-            try {
-              const profileData = JSON.parse(responseText);
-              if (mounted) setProfile(profileData.pet || null);
-            } catch (parseError) {
-              console.error("Failed to parse profile response:", parseError, responseText);
-              if (mounted) setProfile(null);
-            }
-          } else {
-            console.error("Empty profile response");
-            if (mounted) setProfile(null);
-          }
-        } else {
-          console.error("Profile API failed:", profileResponse.status, profileResponse.statusText);
-          if (mounted) setProfile(null);
-        }
+        // Profile data is now loaded at page level
 
-        // Load owner info from database
-        const ownerResponse = await fetch(`/api/pets/${petId}/owner`);
-        if (ownerResponse.ok) {
-          const responseText = await ownerResponse.text();
-          if (responseText) {
-            try {
-              const ownerData = JSON.parse(responseText);
-              if (mounted) setOwner(ownerData.owner || null);
-            } catch (parseError) {
-              console.error("Failed to parse owner response:", parseError, responseText);
-              if (mounted) setOwner(null);
-            }
-          } else {
-            console.error("Empty owner response");
-            if (mounted) setOwner(null);
-          }
-        } else {
-          console.error("Owner API failed:", ownerResponse.status, ownerResponse.statusText);
-          if (mounted) setOwner(null);
-        }
-
-        // Set emergency info to null for now (no API endpoint yet)
-        if (mounted) setEmergency(null);
+        // Owner info is now passed from page level
 
       } catch (error) {
         console.error("Error loading data:", error);
@@ -134,12 +97,8 @@ export default function PostsClient({ petId }: Props) {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-xl font-semibold">EGGPLANT.FISH</h1>
-        <div className="hairline mt-2" />
-      </header>
-
-      <ProfileSummary profile={{...profile, pet_id: petId}} loading={profile === null} />
+      {/* Global SiteHeader is included via app/layout.tsx */}
+      {/* PetProfileSection is now rendered at page level */}
 
       {showComposer && (
         <div ref={composerRef}>
@@ -199,14 +158,16 @@ export default function PostsClient({ petId }: Props) {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2 text-white">
-                    <div className="text-[9px] opacity-80 mb-1">
-                      {post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: '2-digit', 
-                        day: '2-digit' 
-                      }).replace(/\//g, '/') : "2025/01/10"}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="font-bold text-xs">{post.title || "Title Text"}</div>
+                      <div className="text-[9px] opacity-80">
+                        {post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: '2-digit', 
+                          day: '2-digit' 
+                        }).replace(/\//g, '/') : "2025/01/10"}
+                      </div>
                     </div>
-                    <div className="font-bold text-xs mb-1">{post.title || "Title Text"}</div>
                     <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">{post.content}</div>
                   </div>
                 </div>
@@ -286,7 +247,7 @@ export default function PostsClient({ petId }: Props) {
         <div className="text-sm text-red-600">{error}</div>
       ) : null}
 
-      <OwnerInfo owner={owner as Record<string, unknown>} emergency={emergency as Record<string, unknown>} />
+      {ownerInfo && <OwnerInfo owner={ownerInfo} />}
     </div>
   );
 }

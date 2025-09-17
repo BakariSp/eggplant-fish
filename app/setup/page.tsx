@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -13,13 +14,7 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-
-  const generateSlug = (name: string) => {
-    return name.toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') + '-' + Math.random().toString(36).substr(2, 6);
-  };
+  const { user } = useAuth();
 
   const handleCreatePet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,22 +24,33 @@ export default function SetupPage() {
       return;
     }
 
+    if (!user) {
+      setError("Please log in to create a pet profile");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
       
       const supabase = getBrowserSupabaseClient();
       
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError("You must be logged in to create a pet profile");
-        return;
-      }
-
-      const slug = generateSlug(petName);
-
-      // Create pet profile
+      // Calculate age from birthdate
+      const { year, month } = calculateAgeFromBirthdate(petBirthdate);
+      
+      console.log("📅 Setup page - Age calculation:", {
+        birthdate: petBirthdate,
+        calculatedYear: year,
+        calculatedMonth: month
+      });
+      
+      // Generate slug for the pet
+      const slug = petName.toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') + '-' + Math.random().toString(36).substr(2, 6);
+      
+      // Create pet record in database
       const { data: pet, error: petError } = await supabase
         .from("pets")
         .insert({
@@ -53,42 +59,82 @@ export default function SetupPage() {
           birthdate: petBirthdate || null,
           slug: slug,
           owner_user_id: user.id,
-          vaccinated: false,
-          lost_mode: false
+          vaccinated: ["Rabies", "DHPP / DAPP"], // Default vaccinations
+          allergy_note: ["Peanuts", "Chicken", "Grass"], // Default allergies
+          traits: ["Active", "Tries to eat things", "Friendly with cats", "Leash trained"], // Default traits
+          lost_mode: false,
+          gender: "unknown",
+          neuter_status: null,
+          year: year,
+          month: month,
+          microchip_id: null,
+          avatar_url: []
         })
         .select()
         .single();
 
       if (petError) {
-        setError(petError.message);
-        return;
+        throw new Error(petError.message);
       }
 
-      // Create default contact preferences
-      await supabase
+      console.log("🐾 Pet created successfully:", pet);
+
+      // Create contact preferences record
+      const { error: contactError } = await supabase
         .from("contact_prefs")
         .insert({
           pet_id: pet.id,
+          owner_name: user.user_metadata?.full_name || user.email?.split('@')[0] || null,
+          phone: null,
+          email: user.email || null,
           show_phone: false,
-          show_email: false,
+          show_email: true,
           show_sms: false
         });
 
-      // Redirect to edit page
+      if (contactError) {
+        console.warn("Failed to create contact preferences:", contactError);
+        // Don't throw error for contact prefs, just log it
+      }
+
+      // Redirect to edit page with the real pet ID
       router.push(`/dashboard/pets/${pet.id}/edit`);
       
     } catch (err) {
+      console.error("Error creating pet:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
   };
 
+  const calculateAgeFromBirthdate = (birthdate: string) => {
+    if (!birthdate) return { year: null, month: null };
+    
+    const birth = new Date(birthdate);
+    const now = new Date();
+    
+    let years = now.getFullYear() - birth.getFullYear();
+    let months = now.getMonth() - birth.getMonth();
+    
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    
+    // If the pet is less than 1 month old, set to 1 month
+    if (years === 0 && months === 0) {
+      months = 1;
+    }
+    
+    return { year: years, month: months };
+  };
+
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>
       <div className="max-w-md mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-2xl font-bold text-center text-gray-900 mb-6">
+          <h1 className="text-2xl font-bold text-center mb-6" style={{ color: "#2B1F1B" }}>
             Create Pet Profile
           </h1>
           
@@ -137,6 +183,7 @@ export default function SetupPage() {
                 type="date"
                 value={petBirthdate}
                 onChange={(e) => setPetBirthdate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
                 className="w-full"
               />
             </div>
@@ -167,5 +214,3 @@ export default function SetupPage() {
     </main>
   );
 }
-
-

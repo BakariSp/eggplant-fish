@@ -15,7 +15,7 @@ type Pet = {
 type Props = {
 	pet: Pet;
 	tags?: string[];
-	gender?: "male" | "female";
+	gender?: "male" | "female" | "unknown";
 	images?: string[];
 	petId?: string;
 };
@@ -122,7 +122,7 @@ export default function PetHero({ pet, tags = [], gender, images, petId }: Props
       {/* Hero Image with slider dots */}
       <div 
         ref={imageContainerRef}
-        className="relative h-[280px] sm:h-[320px] rounded-[28px] overflow-hidden bg-[color:var(--brand-100)] select-none"
+        className="relative h-[300px] sm:h-[360px] rounded-[28px] overflow-hidden bg-[color:var(--brand-100)] select-none"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -179,25 +179,29 @@ export default function PetHero({ pet, tags = [], gender, images, petId }: Props
           </div>
         )} */}
 
-        {/* Gender Badge */}
-        <div className="absolute top-4 right-4">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: "#EC5914" }}>
-            {gender === "female" ? "♀" : gender === "male" ? "♂" : "•"}
-          </div>
-        </div>
-
-        {/* Tags Overlay */}
-        <div className="absolute bottom-12 left-4 right-4">
-          <div className="flex flex-wrap gap-2 justify-end">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="px-3 py-1 rounded-full text-xs font-medium bg-white/90 backdrop-blur-sm shadow-sm"
-                style={{ color: "var(--brand-800)" }}
+        {/* Gender + Tags Overlay (same stack for consistent spacing) */}
+        <div className="absolute bottom-4 left-8 right-8 sm:left-10 sm:right-10">
+          <div className="flex flex-col items-end gap-2">
+            {gender && gender !== "unknown" && (
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-lg text-xl font-extrabold"
+                style={{ backgroundColor: "#EC5914" }}
+                aria-label={gender === "female" ? "Female" : "Male"}
               >
-                {tag}
-              </span>
-            ))}
+                {gender === "female" ? "♀" : "♂"}
+              </div>
+            )}
+            <div className="flex flex-wrap-reverse gap-2 justify-end ml-auto" style={{ maxWidth: "65%" }}>
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-4 py-1.5 rounded-full text-sm font-medium shadow-sm"
+                  style={{ color: "var(--brand-800)", backgroundColor: "var(--background)" }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -218,10 +222,10 @@ export default function PetHero({ pet, tags = [], gender, images, petId }: Props
       </div>
 
       {/* Pet Name & Info */}
-      <div className="flex items-center justify-between mt-4 mb-6">
+      <div className="flex items-center justify-between mt-4 mb-6 px-6 sm:px-8">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-extrabold" style={{ color: "#000" }}>
+            <h1 className="text-3xl font-black" style={{ color: "#000", fontFamily: "var(--font-display), var(--font-quicksand), Arial" }}>
               {pet.name}
             </h1>
             <span className="text-black">🐕</span>
@@ -229,7 +233,7 @@ export default function PetHero({ pet, tags = [], gender, images, petId }: Props
           <div className="flex items-center gap-2 text-base text-black mt-1">
             <span>{pet.breed}</span>
             <span>•</span>
-            <span>{pet.age || "1y 4m"}</span>
+            <span>{pet.age || "0m"}</span>
           </div>
         </div>
         {petId ? (

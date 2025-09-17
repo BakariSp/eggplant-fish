@@ -5,6 +5,7 @@ import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase"
 
 const Input = z.object({
   petId: z.string().uuid(),
+  title: z.string().max(100).optional(),
   content: z.string().min(1).max(2000),
   images: z.array(z.string().url()).max(3).optional(),
 });
@@ -14,7 +15,7 @@ export async function createPost(raw: unknown) {
   if (!parsed.success) {
     return { ok: false as const, reason: "Invalid input" };
   }
-  const { petId, content, images = [] } = parsed.data;
+  const { petId, title, content, images = [] } = parsed.data;
   
   // Check server-side authentication
   const supabase = await getServerSupabaseClient();
@@ -51,6 +52,7 @@ export async function createPost(raw: unknown) {
     const adminSupabase = getAdminSupabaseClient();
     const { error } = await adminSupabase.from("pet_posts").insert({
       pet_id: petId,
+      title,
       content,
       images,
     });
@@ -60,6 +62,7 @@ export async function createPost(raw: unknown) {
 
   const { error } = await supabase.from("pet_posts").insert({
     pet_id: petId,
+    title,
     content,
     images,
   });

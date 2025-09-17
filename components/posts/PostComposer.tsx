@@ -11,6 +11,7 @@ type Props = {
 };
 
 export default function PostComposer({ petId, onPostCreated }: Props) {
+  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,11 +139,13 @@ export default function PostComposer({ petId, onPostCreated }: Props) {
       
       const result = await createPost({
         petId,
+        title: title.trim() || undefined,
         content: content.trim(),
         images: imageUrls,
       });
 
       if (result.ok) {
+        setTitle("");
         setContent("");
         setImages([]);
         onPostCreated?.();
@@ -165,6 +168,14 @@ export default function PostComposer({ petId, onPostCreated }: Props) {
             <span className="text-sm font-medium" style={{ color: "var(--brand-700)" }}>🐾</span>
           </div>
           <div className="flex-1 space-y-2">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Post title..."
+              className="w-full rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
+              maxLength={100}
+            />
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}

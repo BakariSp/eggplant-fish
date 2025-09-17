@@ -1,9 +1,9 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase";
-import PetHero from "@/components/profile/PetHero";
-import PetInfoGrid from "@/components/profile/PetInfoGrid";
-import RecentPosts from "@/components/profile/RecentPosts";
+import PetProfileSection from "@/components/profile/PetProfileSection";
+import RecentPostsWrapper from "@/components/profile/RecentPostsWrapper";
 import PostLibrary from "@/components/profile/PostLibrary";
 import OwnerInfo from "@/components/profile/OwnerInfo";
+import LostPetReportWrapper from "@/components/profile/LostPetReportWrapper";
 
 // Force dynamic rendering to prevent caching
 export const dynamic = 'force-dynamic';
@@ -87,53 +87,15 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     );
   }
 
-  // Calculate age
-  const age = pet.birthdate 
-    ? (() => {
-        const birth = new Date(pet.birthdate);
-        const now = new Date();
-        const years = now.getFullYear() - birth.getFullYear();
-        const months = now.getMonth() - birth.getMonth();
-        return years > 0 ? `${years}y ${months}m` : `${months}m`;
-      })()
-    : undefined;
-
-  const petData = {
-    name: pet.name || "Unknown",
-    breed: pet.breed || "Mixed",
-    age,
-    avatar_url: pet.avatar_url,
-    lost_mode: pet.lost_mode,
-  };
-
-  const petInfo = {
-    vaccinated: pet.vaccinated,
-    vaccinations: pet.vaccinated ? ["Rabies", "DHPP / DAPP"] : [],
-    microchip_id: "077077", // Mock data - TODO: add to schema
-    allergies: pet.allergy_note ? pet.allergy_note.split(",").map((s: string) => s.trim()) : [],
-    neuter_status: true, // Mock data - TODO: add to schema
-  };
-  
-  console.log("Pet info processed:", petInfo);
-
-  const tags = ["Active", "Leash trained", "Tries to eat things", "Friendly with cats"];
 
   return (
     <main className="min-h-screen">
-      {/* Header */}
-      <header className="px-4 pt-4 pb-2 sticky top-0 z-10" style={{ background: "#FCEFDC" }}>
-        <div className="text-lg font-extrabold tracking-wide" style={{ color: "#2B1F1B" }}>
-          EGGPLANT.FISH
-        </div>
-        <div className="hairline mt-2" />
-      </header>
-
       {/* Content */}
-      <div className="px-3 sm:px-4 py-6 max-w-[760px] mx-auto">
-        <PetHero pet={petData} tags={tags} petId={pet.id} />
-        <PetInfoGrid info={petInfo} />
+      <div className="px-3 sm:px-4 pt-1 pb-6 max-w-[760px] mx-auto">
+        <LostPetReportWrapper initialPet={pet} owner={ownerInfo} />
+        <PetProfileSection pet={pet} />
+        <RecentPostsWrapper posts={posts || []} petId={pet.id} />
         {ownerInfo && <OwnerInfo owner={ownerInfo} />}
-        <RecentPosts posts={posts || []} />
         <PostLibrary posts={posts || []} />
       </div>
     </main>
