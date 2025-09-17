@@ -1,7 +1,6 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase";
 import PetProfileSection from "@/components/profile/PetProfileSection";
 import RecentPostsWrapper from "@/components/profile/RecentPostsWrapper";
-import PostLibrary from "@/components/profile/PostLibrary";
 import OwnerInfo from "@/components/profile/OwnerInfo";
 import LostPetReportWrapper from "@/components/profile/LostPetReportWrapper";
 
@@ -96,7 +95,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         <PetProfileSection pet={pet} />
         <RecentPostsWrapper posts={posts || []} petId={pet.id} />
         {ownerInfo && <OwnerInfo owner={ownerInfo} />}
-        <PostLibrary posts={posts || []} />
       </div>
     </main>
   );
