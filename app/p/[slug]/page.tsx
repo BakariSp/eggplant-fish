@@ -3,6 +3,7 @@ import PetProfileSection from "@/components/profile/PetProfileSection";
 import RecentPostsWrapper from "@/components/profile/RecentPostsWrapper";
 import OwnerInfo from "@/components/profile/OwnerInfo";
 import LostPetReportWrapper from "@/components/profile/LostPetReportWrapper";
+import PublicProfileClient from "@/components/profile/PublicProfileClient";
 
 // Force dynamic rendering to prevent caching
 export const dynamic = 'force-dynamic';
@@ -90,12 +91,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   return (
     <main className="min-h-screen">
       {/* Content */}
-      <div className="px-3 sm:px-4 pt-1 pb-6 max-w-[760px] mx-auto">
-        <LostPetReportWrapper initialPet={pet} owner={ownerInfo} />
-        <PetProfileSection pet={pet} />
-        <RecentPostsWrapper posts={posts || []} petId={pet.id} />
-        {ownerInfo && <OwnerInfo owner={ownerInfo} />}
-      </div>
+      <PublicProfileClient 
+        pet={pet} 
+        posts={posts || []} 
+        ownerInfo={ownerInfo} 
+      />
     </main>
   );
 }

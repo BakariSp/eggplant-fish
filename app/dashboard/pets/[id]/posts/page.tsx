@@ -1,5 +1,6 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase";
 import PetProfileSection from "@/components/profile/PetProfileSection";
+import LostPetReportWrapper from "@/components/profile/LostPetReportWrapper";
 import PostsClient from "./posts-client";
 
 // Force dynamic rendering to prevent caching
@@ -88,7 +89,12 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
   return (
     <main className="min-h-screen">
       <div className="px-3 sm:px-4 pt-1 pb-6 max-w-[760px] mx-auto">
-        <PetProfileSection pet={pet} />
+        <LostPetReportWrapper 
+          initialPet={pet} 
+          owner={ownerInfo} 
+          showLostFound={pet.lost_mode === true}
+        />
+        <PetProfileSection pet={pet} showLostButton={false} />
         <PostsClient petId={id} ownerInfo={ownerInfo} />
       </div>
     </main>

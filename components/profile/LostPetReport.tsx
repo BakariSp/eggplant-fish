@@ -23,9 +23,10 @@ type Props = {
   pet: Pet;
   owner: Owner | null;
   onToggleLostMode?: () => void;
+  onLostModeChange?: (newLostMode: boolean) => void; // 新增：状态变化回调
 };
 
-export default function LostPetReport({ pet, owner, onToggleLostMode }: Props) {
+export default function LostPetReport({ pet, owner, onToggleLostMode, onLostModeChange }: Props) {
   const petImage = Array.isArray(pet.avatar_url) ? pet.avatar_url[0] : pet.avatar_url;
   const ownerName = owner?.name || "Pet Owner";
   const [currentLostMode, setCurrentLostMode] = useState(pet.lost_mode);
@@ -65,6 +66,11 @@ export default function LostPetReport({ pet, owner, onToggleLostMode }: Props) {
         // Call the optional callback if provided
         if (onToggleLostMode) {
           onToggleLostMode();
+        }
+        
+        // Call the lost mode change callback
+        if (onLostModeChange) {
+          onLostModeChange(newLostMode);
         }
       }
     } catch (error) {

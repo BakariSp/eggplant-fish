@@ -20,9 +20,12 @@ type Pet = {
 
 type Props = {
   pet: Pet;
+  onToggleLostFound?: () => void;
+  showLostFound?: boolean; // 新增：是否显示Lost/Found界面
+  showLostButton?: boolean; // 新增：控制是否显示右上角 Lost 按钮
 };
 
-export default function PetProfileSection({ pet }: Props) {
+export default function PetProfileSection({ pet, onToggleLostFound, showLostFound, showLostButton = true }: Props) {
   // Calculate age string priority: explicit year/month fields > birthdate > undefined
   const age = (typeof pet.year === 'number' || typeof pet.month === 'number')
     ? (() => {
@@ -68,6 +71,9 @@ export default function PetProfileSection({ pet }: Props) {
         tags={tags} 
         petId={pet.id} 
         gender={(pet.gender === 'male' || pet.gender === 'female' || pet.gender === 'unknown') ? pet.gender : 'unknown'}
+        onToggleLostFound={onToggleLostFound}
+        showLostFound={showLostFound}
+        showLostButton={showLostButton}
       />
       <PetInfoGrid info={petInfo} />
     </>

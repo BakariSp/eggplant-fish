@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import LostPetReport from "./LostPetReport";
+import LostFoundModule from "./LostFoundModule";
 
 type Pet = {
   id: string;
@@ -21,9 +21,16 @@ type Owner = {
 type Props = {
   initialPet: Pet;
   owner: Owner | null;
+  showLostFound?: boolean; // 新增：控制是否显示 Lost/Found 功能
+  onLostModeChange?: (newLostMode: boolean) => void; // 新增：状态变化回调
 };
 
-export default function LostPetReportWrapper({ initialPet, owner }: Props) {
+export default function LostPetReportWrapper({ 
+  initialPet, 
+  owner, 
+  showLostFound = false, // 默认隐藏LostPetReportWrapper本身
+  onLostModeChange
+}: Props) {
   const router = useRouter();
 
   const handleRefresh = () => {
@@ -32,10 +39,12 @@ export default function LostPetReportWrapper({ initialPet, owner }: Props) {
   };
 
   return (
-    <LostPetReport 
+    <LostFoundModule 
       pet={initialPet} 
       owner={owner} 
-      onToggleLostMode={handleRefresh} 
+      onToggleLostMode={handleRefresh}
+      onLostModeChange={onLostModeChange}
+      isVisible={showLostFound}
     />
   );
 }

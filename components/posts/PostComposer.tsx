@@ -8,19 +8,26 @@ import { uploadImage } from "@/lib/storage";
 type Props = {
   petId: string;
   onPostCreated?: () => void;
+  onCancel?: () => void; // 新增：取消回调
 };
 
-export default function PostComposer({ petId, onPostCreated }: Props) {
+export default function PostComposer({ petId, onPostCreated, onCancel }: Props) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  // 弹窗进入动画
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, 3);
@@ -161,7 +168,26 @@ export default function PostComposer({ petId, onPostCreated }: Props) {
   };
 
   return (
-    <section className="rounded-2xl border border-[color:var(--brand-200)] soft-shadow p-4 bg-white space-y-3">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      {/* 半透明背景遮罩 */}
+      <div 
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+        onClick={onCancel}
+      />
+      
+      {/* 弹窗内容 */}
+      <div className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+        <section className="rounded-2xl border border-[color:var(--brand-200)] soft-shadow p-4 bg-white space-y-3">
+          {/* 关闭按钮 */}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="absolute top-1 right-1 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors z-10"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="flex gap-3">
           <div className="w-10 h-10 rounded-full bg-[color:var(--brand-100)] flex items-center justify-center">
@@ -347,13 +373,15 @@ export default function PostComposer({ petId, onPostCreated }: Props) {
             <button
               type="button"
               onClick={() => {
+                setTitle("");
                 setContent("");
                 setImages([]);
+                onCancel?.();
               }}
               className="px-3 py-2 rounded-lg border border-[color:var(--brand-200)] bg-white text-sm"
               disabled={isSubmitting}
             >
-              Clear
+              Cancel
             </button>
             <button
               type="submit"
@@ -366,6 +394,8 @@ export default function PostComposer({ petId, onPostCreated }: Props) {
           </div>
         </div>
       </form>
-    </section>
+        </section>
+      </div>
+    </div>
   );
 }
