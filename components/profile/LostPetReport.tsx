@@ -96,8 +96,6 @@ export default function LostPetReport({ pet, owner, onToggleLostMode, onLostMode
         <div className="flex items-center justify-center mb-4">
           {isLost ? (
             <button 
-              onClick={handleToggleLostMode}
-              disabled={isUpdating}
               className={`bg-red-800 px-6 py-2 rounded-full flex items-center gap-3 hover:bg-red-900 transition-colors ${
                 isUpdating ? "opacity-50 cursor-not-allowed" : ""
               }`}
@@ -191,8 +189,12 @@ export default function LostPetReport({ pet, owner, onToggleLostMode, onLostMode
 
         {/* Action button - only show for Lost pets */}
         {isLost ? (
-          <button className="px-8 py-3 rounded-full font-medium text-lg transition-colors shadow-lg bg-red-800 hover:bg-red-900 text-white">
-            Report found
+          <button 
+            className="px-8 py-3 rounded-full font-medium text-lg transition-colors shadow-lg bg-red-800 hover:bg-red-900 text-white"
+            onClick={handleToggleLostMode}
+            disabled={isUpdating}
+          >
+            {isUpdating ? "Updating..." : "Report found"}
           </button>
         ) : (
           // Placeholder space to maintain consistent background size
