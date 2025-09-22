@@ -99,18 +99,31 @@ export default function PetsDashboard() {
         >
           <div className="grid grid-cols-[30%_70%] items-center gap-4">
             <div className="h-28 aspect-square rounded-xl overflow-hidden bg-white/10">
-              <img
-                src={
-                  user?.user_metadata?.avatar_url ||
-                  user?.user_metadata?.picture ||
-                  "/main.jpg"
+              {(() => {
+                const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+                if (avatarUrl) {
+                  return (
+                    <img
+                      src={avatarUrl}
+                      alt="Owner avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  );
                 }
-                alt="Owner avatar"
-                className="w-full h-full object-cover"
-              />
+                // Transparent placeholder with same size to preserve layout
+                return (
+                  <div aria-label="Avatar placeholder" className="w-full h-full">
+                    <img
+                      src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+                      alt=""
+                      className="w-full h-full object-cover opacity-0"
+                    />
+                  </div>
+                );
+              })()}
             </div>
             <div className="text-white pl-2 sm:pl-4">
-              <div className="text-[12px] opacity-90 mb-1">Welcome Back!</div>
+            <div className="text-[13px] opacity-90 mb-1">Welcome Back!</div>
               <div
                 className="text-2xl sm:text-3xl font-extrabold leading-snug"
                 style={{ fontFamily: "var(--font-display), var(--font-quicksand), Arial" }}
@@ -224,12 +237,7 @@ export default function PetsDashboard() {
                       Manage Posts
                     </Link>
                   </div>
-                  <Link
-                    href={`/p/${pet.slug}`}
-                    className="block mt-2 text-center text-[#EC5914] text-sm hover:underline"
-                  >
-                    View Public Profile
-                  </Link>
+                  {/* Removed public profile entry per new UX: only Manage Posts remains */}
                 </div>
               </div>
             ))}

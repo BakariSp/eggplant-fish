@@ -1,9 +1,5 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase";
-import PetProfileSection from "@/components/profile/PetProfileSection";
-import RecentPostsWrapper from "@/components/profile/RecentPostsWrapper";
-import OwnerInfo from "@/components/profile/OwnerInfo";
-import LostPetReportWrapper from "@/components/profile/LostPetReportWrapper";
-import PublicProfileClient from "@/components/profile/PublicProfileClient";
+import PostsLostClient from "@/app/dashboard/pets/[id]/posts/PostsLostClient";
 
 // Force dynamic rendering to prevent caching
 export const dynamic = 'force-dynamic';
@@ -35,13 +31,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     error 
   });
 
-  // Fetch posts
-  const { data: posts } = await supabase
-    .from("pet_posts")
-    .select("*")
-    .eq("pet_id", pet?.id)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  // Posts 列表交由 PostsClient 在客户端自行拉取，避免双实现
 
   // Fetch owner info and contact preferences
   let ownerInfo = null;
@@ -90,12 +80,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="min-h-screen">
-      {/* Content */}
-      <PublicProfileClient 
-        pet={pet} 
-        posts={posts || []} 
-        ownerInfo={ownerInfo} 
-      />
+      <PostsLostClient pet={pet} ownerInfo={ownerInfo} />
     </main>
   );
 }

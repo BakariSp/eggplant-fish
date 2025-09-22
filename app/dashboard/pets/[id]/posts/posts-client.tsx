@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import PostComposer from "@/components/posts/PostComposer";
 import SectionHeader from "@/components/ui/SectionHeader";
@@ -36,12 +36,22 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const composerRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const [showComposer, setShowComposer] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedPost, setSelectedPost] = useState<MockPost | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [dragDeltaX, setDragDeltaX] = useState(0);
+  const [activeAxis, setActiveAxis] = useState<'none' | 'x' | 'y'>('none');
+  const [suppressClick, setSuppressClick] = useState(false);
+  const [angleDeg, setAngleDeg] = useState(0); // continuous angle during drag
+  const [snapAngleDeg, setSnapAngleDeg] = useState(0); // snapping target angle
+  const [isSnapping, setIsSnapping] = useState(false);
 
   // ESC键关闭popup
   useEffect(() => {
@@ -112,14 +122,22 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
     };
   }, [petId, refreshKey]);
 
-  // 轮播逻辑：计算当前显示的三张图片
+  // Recent Posts 数据源：仅取有图的最近最多 9 条
+  const previewPosts = useMemo(() => {
+    const list = posts || [];
+    const withImages = list.filter(p => Array.isArray(p.images) && p.images.length > 0 && !!p.images[0]);
+    // 假设后端已按时间降序返回；若无保证，可在此处按 created_at 排序
+    return withImages.slice(0, 9);
+  }, [posts]);
+
+  // 轮播逻辑：计算当前显示的三张图片（来自预览数据源）
   const getCurrentPosts = () => {
-    if (!posts || posts.length === 0) return [];
-    const totalPosts = posts.length;
+    if (!previewPosts || previewPosts.length === 0) return [];
+    const totalPosts = previewPosts.length;
     return [
-      posts[currentIndex % totalPosts],           // 左侧
-      posts[(currentIndex + 1) % totalPosts],     // 中间
-      posts[(currentIndex + 2) % totalPosts]      // 右侧
+      previewPosts[currentIndex % totalPosts],
+      previewPosts[(currentIndex + 1) % totalPosts],
+      previewPosts[(currentIndex + 2) % totalPosts]
     ];
   };
 
@@ -135,6 +153,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
 
   // 点击中间图片的处理函数（显示popup）
   const handleMiddleImageClick = (post: MockPost) => {
+    if (suppressClick || isDragging) return;
     setSelectedPost(post);
     setShowPopup(true);
   };
@@ -188,6 +207,90 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
     setTimeout(() => composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
+  // Swipe/drag handlers for carousel
+  const beginDrag = (x: number, y: number) => {
+    setIsDragging(true);
+    setDragStartX(x);
+    setDragStartY(y);
+    setDragDeltaX(0);
+    setActiveAxis('none');
+    setIsSnapping(false);
+    setSnapAngleDeg(0);
+  };
+
+  const moveDrag = (x: number, y?: number) => {
+    if (!isDragging) return;
+    const dx = x - dragStartX;
+    const dy = (y ?? dragStartY) - dragStartY;
+    if (activeAxis === 'none') {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        // 更偏向水平滑动：仅当垂直明显大于水平时才判定为 y
+        const preferX = Math.abs(dx) >= Math.abs(dy) - 8;
+        setActiveAxis(preferX ? 'x' : 'y');
+      }
+    }
+    if (activeAxis === 'x') {
+      setDragDeltaX(dx);
+      const width = carouselRef.current?.offsetWidth || 320;
+      const total = previewPosts.length || 1;
+      const stepDeg = 360 / total;
+      const sensitivity = 1; // 1 drag width ~ 1 step
+      const newAngle = (dx / width) * stepDeg * sensitivity;
+      setAngleDeg(newAngle);
+    }
+  };
+
+  const endDrag = () => {
+    if (!isDragging) return;
+    const width = carouselRef.current?.offsetWidth || 300;
+    const threshold = Math.max(40, width * 0.2);
+    const moved = Math.abs(dragDeltaX) > 6;
+    const total = previewPosts.length || 1;
+    const stepDeg = 360 / total;
+    // Decide steps by normalized angle, or by threshold if axis chosen
+    let steps = 0;
+    if (Math.abs(dragDeltaX) >= threshold) {
+      steps = dragDeltaX > 0 ? -1 : 1; // right drag => go to previous (rotate right), left drag => next
+    } else {
+      // snap to nearest based on angleDeg
+      steps = Math.round(-angleDeg / stepDeg);
+    }
+    if (total > 0) {
+      const targetAngle = -steps * stepDeg;
+      setIsSnapping(true);
+      setSnapAngleDeg(targetAngle);
+      // After animation, update index and reset angles
+      setTimeout(() => {
+        if (steps !== 0) {
+          setCurrentIndex(prev => (prev + steps + total) % total);
+        }
+        setAngleDeg(0);
+        setSnapAngleDeg(0);
+        setIsSnapping(false);
+      }, 300);
+    }
+    setIsDragging(false);
+    setActiveAxis('none');
+    setDragDeltaX(0);
+    if (moved) {
+      setSuppressClick(true);
+      setTimeout(() => setSuppressClick(false), 150);
+    }
+  };
+  
+  // Global mouse listeners for dragging on desktop
+  useEffect(() => {
+    if (!isDragging) return;
+    const onMouseMove = (e: MouseEvent) => moveDrag(e.clientX, e.clientY);
+    const onMouseUp = () => endDrag();
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isDragging, moveDrag]);
+
   return (
     <div className="space-y-5">
       {/* Global SiteHeader is included via app/layout.tsx */}
@@ -227,23 +330,62 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
 
          {/* Posts Cards - Top half outside background */}
          <div className="relative px-4 mb-[-120px] z-20">
-           <div className="relative min-h-[220px]">
-             {posts && posts.length > 0 ? getCurrentPosts().map((post, index) => (
-              <div
-                key={post.id}
-                className={
-                  "absolute w-32 sm:w-36 rounded-2xl overflow-hidden shadow-2xl transform transition-all duration-500 ease-in-out " +
-                  (index === 0 ? "-rotate-18" : index === 2 ? "rotate-18" : "rotate-0 scale-[1.4]") +
-                  (index === 1 ? " z-20" : index === 0 ? " z-5" : " z-10")
-                }
-                style={{ 
-                  background: "#2a2a2a",
-                  left: index === 0 ? "25%" : index === 1 ? "calc(50% + 30px)" : "75%",
-                  top: index === 2 ? "110px" : "70px",
-                  transform: `translateX(-50%) ${index === 0 ? "rotate(-18deg)" : index === 2 ? "rotate(18deg)" : "scale(1.05)"}`
-                }}
-                onClick={index === 0 ? handleLeftImageClick : index === 2 ? handleRightImageClick : index === 1 ? () => handleMiddleImageClick(post) : undefined}
-              >
+           <div
+             ref={carouselRef}
+             className="relative min-h-[220px] select-none"
+             onMouseDown={(e) => { e.preventDefault(); beginDrag(e.clientX, e.clientY); }}
+             onTouchStart={(e) => { const t = e.touches[0]; beginDrag(t.clientX, t.clientY); }}
+             onTouchMove={(e) => { if (activeAxis === 'x') e.preventDefault(); const t = e.touches[0]; moveDrag(t.clientX, t.clientY); }}
+             onTouchEnd={() => endDrag()}
+             style={{ touchAction: 'pan-y' }}
+           >
+             {previewPosts.length > 0 ? (
+               // 渲染所有 N 张，前面三张自然成为前侧，其他在背面可见
+              previewPosts.map((post, i) => {
+               const total = previewPosts.length;
+               // 每项在环上的基础角度（平均分布）
+               const step = 360 / total;
+               // 基于当前 frontIndex 偏移：currentIndex 指向前方 0°
+               const base = ((i - (currentIndex % total) + total) % total) * step;
+               const delta = isSnapping ? snapAngleDeg : angleDeg;
+               const angle = base + delta;
+               const rad = (angle * Math.PI) / 180;
+               const radiusX = 140;
+               const radiusY = 22;
+               const x = Math.sin(rad) * radiusX;
+               const y = -Math.cos(rad) * radiusY; // front更高，侧面略低
+               const depth = (Math.cos(rad) + 1) / 2; // 0..1, front=1
+               const scale = 0.9 + depth * 0.5; // 0.9..1.4
+               const tilt = Math.sin(rad) * 16; // -16..16deg
+               const z = Math.round(1 + depth * 40); // 1..41
+               const opacity = 0.8 + depth * 0.2; // 0.8..1，侧边更透明一些（侧位≈0.9）
+               return (
+                <div
+                  key={post.id}
+                  className={
+                    "absolute w-32 sm:w-36 rounded-2xl overflow-hidden shadow-2xl transition-transform duration-300 ease-out"
+                  }
+                  style={{ 
+                    background: "#2a2a2a",
+                    left: "50%",
+                    top: "80px",
+                    transform: `translateX(-50%) translateX(${x}px) translateY(${y}px) scale(${scale}) rotate(${tilt}deg)`,
+                    zIndex: z,
+                    opacity,
+                    cursor: previewPosts.length > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                    willChange: 'transform'
+                  }}
+                  onClick={() => {
+                    // 仅当该项最接近前方时允许点击
+                    if (suppressClick) return;
+                    // 找出前方项：角度最接近 0° 的项
+                    const normalized = ((angle % 360) + 360) % 360;
+                    const distanceFromFront = Math.min(Math.abs(normalized), Math.abs(360 - normalized));
+                    if (distanceFromFront < 20) {
+                      handleMiddleImageClick(post);
+                    }
+                  }}
+                >
                 <div className="relative h-48 sm:h-52">
                   {post.images?.[0] ? (
                     <Image
@@ -260,57 +402,85 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2 text-white">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="font-bold text-xs">{post.title || "Title Text"}</div>
+                      <div className="font-bold text-xs">{post.title || "Untitled Post"}</div>
                       <div className="text-[9px] opacity-80">
                         {post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { 
                           year: 'numeric', 
                           month: '2-digit', 
                           day: '2-digit' 
-                        }).replace(/\//g, '/') : "2025/01/10"}
+                        }).replace(/\//g, '/') : ""}
                       </div>
                     </div>
-                    <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">{post.content}</div>
+                    <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">{post.content || ""}</div>
                   </div>
                 </div>
               </div>
-            )) : (
+               );
+             }) ) : (
               /* Empty state with placeholder cards */
                [0, 1, 2].map((index) => (
-                 <div
-                   key={`placeholder-${index}`}
-                   className={
-                     "absolute w-32 sm:w-36 rounded-2xl overflow-hidden shadow-2xl transform transition-all duration-500 ease-in-out " +
-                     (index === 0 ? "-rotate-18" : index === 2 ? "rotate-18" : "rotate-0 scale-[1.4]") +
-                     (index === 1 ? " z-20" : index === 0 ? " z-5" : " z-10")
-                   }
-                   style={{ 
-                     background: "#2a2a2a",
-                     left: index === 0 ? "25%" : index === 1 ? "calc(50% + 30px)" : "75%",
-                     top: index === 2 ? "110px" : "70px",
-                     transform: `translateX(-50%) ${index === 0 ? "rotate(-18deg)" : index === 2 ? "rotate(18deg)" : "scale(1.05)"}`
-                   }}
-                 >
+                 (() => {
+                   const baseAngles = [-120, 0, 120];
+                   const delta = isSnapping ? snapAngleDeg : angleDeg;
+                   const angle = baseAngles[index] + delta;
+                   const rad = (angle * Math.PI) / 180;
+                   const radiusX = 140;
+                   const radiusY = 20;
+                   const x = Math.sin(rad) * radiusX;
+                   const y = -Math.cos(rad) * radiusY;
+                   const depth = (Math.cos(rad) + 1) / 2;
+                   const scale = 1.0 + depth * 0.4;
+                   const tilt = Math.sin(rad) * 18;
+                   const z = Math.round(5 + depth * 20);
+                   const opacity = 0.85 + depth * 0.15;
+                   return (
+                     <div
+                       key={`placeholder-${index}`}
+                       className={
+                         "absolute w-32 sm:w-36 rounded-2xl overflow-hidden shadow-2xl transition-transform duration-300 ease-out"
+                       }
+                       style={{ 
+                         background: "#2a2a2a",
+                         left: "50%",
+                         top: "80px",
+                         transform: `translateX(-50%) translateX(${x}px) translateY(${y}px) scale(${scale}) rotate(${tilt}deg)` ,
+                         zIndex: z,
+                         opacity
+                       }}
+                     >
                   <div className="relative h-48 sm:h-52">
                     <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
                       <span className="text-4xl opacity-50">📷</span>
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                     <div className="absolute bottom-2 left-2 right-2 text-white">
-                      <div className="text-[9px] opacity-80 mb-1">2025/01/10</div>
-                      <div className="font-bold text-xs mb-1">Title Text</div>
-                      <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">Sample post content...</div>
+                      <div className="font-bold text-xs mb-1">What’s your pet up to today?</div>
+                      <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">Share a funny moment, a cute story, or a little paw-some adventure</div>
                     </div>
                   </div>
-                </div>
+                    </div>
+                   );
+                 })()
               ))
             )}
           </div>
           
           {/* Pagination Dots */}
           <div className="flex justify-center gap-2" style={{ marginTop: '132px' }}>
-            <div className="w-2 h-2 rounded-full bg-white" />
-            <div className="w-2 h-2 rounded-full bg-white/60" />
-            <div className="w-2 h-2 rounded-full bg-white/60" />
+            {previewPosts.length > 0 ? (
+              Array.from({ length: previewPosts.length }).map((_, idx) => (
+                <div
+                  key={`dot-${idx}`}
+                  className={`w-2 h-2 rounded-full ${idx === (currentIndex % previewPosts.length) ? 'bg-white' : 'bg-white/60'}`}
+                />
+              ))
+            ) : (
+              <>
+                <div className="w-2 h-2 rounded-full bg-white/60" />
+                <div className="w-2 h-2 rounded-full bg-white/60" />
+                <div className="w-2 h-2 rounded-full bg-white/60" />
+              </>
+            )}
           </div>
         </div>
 

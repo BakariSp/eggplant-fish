@@ -5,8 +5,8 @@ import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase"
 
 const Input = z.object({
   petId: z.string().uuid(),
-  title: z.string().max(100).optional(),
-  content: z.string().min(1).max(2000),
+  title: z.string().trim().min(1).max(100), // 标题必填
+  content: z.string().max(2000).optional().default(""), // 内容可为空
   images: z.array(z.string().url()).max(3).optional(),
 });
 
@@ -15,7 +15,7 @@ export async function createPost(raw: unknown) {
   if (!parsed.success) {
     return { ok: false as const, reason: "Invalid input" };
   }
-  const { petId, title, content, images = [] } = parsed.data;
+  const { petId, title, content = "", images = [] } = parsed.data;
   
   // Check server-side authentication
   const supabase = await getServerSupabaseClient();
@@ -52,8 +52,8 @@ export async function createPost(raw: unknown) {
     const adminSupabase = getAdminSupabaseClient();
     const { error } = await adminSupabase.from("pet_posts").insert({
       pet_id: petId,
-      title,
-      content,
+      title: title.trim(),
+      content: content.trim(),
       images,
     });
     if (error) return { ok: false as const, reason: error.message };
@@ -62,8 +62,8 @@ export async function createPost(raw: unknown) {
 
   const { error } = await supabase.from("pet_posts").insert({
     pet_id: petId,
-    title,
-    content,
+    title: title.trim(),
+    content: content.trim(),
     images,
   });
   if (error) return { ok: false as const, reason: error.message };

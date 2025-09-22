@@ -3,6 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 // Types for post data
 export interface Post {
   id: string;
+  title?: string;
   content: string;
   images?: string[];
   pet_id: string;
@@ -42,6 +43,7 @@ export class PostsDataAccess {
         .from("pet_posts")
         .select(`
           id,
+          title,
           content,
           images,
           created_at
@@ -64,9 +66,9 @@ export class PostsDataAccess {
       const formattedPosts: PostWithExtras[] = posts?.map(post => ({
         ...post,
         pet_id: petId, // Add pet_id for compatibility
-        title: post.content?.substring(0, 50) + (post.content?.length > 50 ? "..." : "") || "Untitled Post", // Use content as title
-        author_name: "Pet Owner", // Add default author
-        tags: [] // Add default tags (tags field doesn't exist in schema)
+        title: (post as any).title ?? "Untitled Post",
+        author_name: "Pet Owner",
+        tags: []
       })) || [];
 
       return { posts: formattedPosts, error: null };

@@ -120,7 +120,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || isSubmitting) return;
+    if (!title.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -146,7 +146,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
       
       const result = await createPost({
         petId,
-        title: title.trim() || undefined,
+        title: title.trim(),
         content: content.trim(),
         images: imageUrls,
       });
@@ -366,9 +366,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
         </div>
         
         <div className="flex justify-between items-center">
-          <div className="text-xs text-gray-500">
-            {content.length}/500 characters
-          </div>
+          <div className="text-xs text-gray-500" />
           <div className="flex gap-2">
             <button
               type="button"
@@ -385,7 +383,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
             </button>
             <button
               type="submit"
-              disabled={!content.trim() || isSubmitting}
+              disabled={!title.trim() || isSubmitting}
               className="px-3 py-2 rounded-lg text-white soft-shadow text-sm disabled:opacity-50"
               style={{ backgroundColor: "#EC5914" }}
             >
