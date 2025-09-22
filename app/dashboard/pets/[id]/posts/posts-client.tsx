@@ -41,6 +41,11 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedPost, setSelectedPost] = useState<MockPost | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [viewerDragging, setViewerDragging] = useState(false);
+  const [viewerStartX, setViewerStartX] = useState(0);
+  const [viewerDeltaX, setViewerDeltaX] = useState(0);
+  const viewerRef = useRef<HTMLDivElement>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -155,6 +160,9 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
   const handleMiddleImageClick = (post: MockPost) => {
     if (suppressClick || isDragging) return;
     setSelectedPost(post);
+    // 将 viewerIndex 对齐到当前前方项
+    const idx = previewPosts.findIndex(p => p.id === post.id);
+    setViewerIndex(idx >= 0 ? idx : 0);
     setShowPopup(true);
   };
 
@@ -162,6 +170,9 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
   const handleClosePopup = () => {
     setShowPopup(false);
     setSelectedPost(null);
+    setViewerIndex(null);
+    setViewerDragging(false);
+    setViewerDeltaX(0);
   };
 
   // 显示删除确认弹窗
@@ -533,7 +544,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
           onClick={handleClosePopup}
         >
           <div 
-            className="bg-[#f5f5dc] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300 scale-100"
+            className="bg-[#f5f5dc] rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300 scale-100"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -546,19 +557,104 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
               </svg>
             </button>
 
-            {/* Image */}
-            <div className="relative h-[500px] sm:h-[700px]">
-              {selectedPost.images?.[0] ? (
-                <Image
-                  src={selectedPost.images[0]}
-                  alt={selectedPost.title || "Post image"}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
-                  <span className="text-6xl opacity-50">📷</span>
+            {/* Viewer with swipe */}
+            <div
+              ref={viewerRef}
+              className="relative h-[70vh] bg-black overflow-hidden select-none"
+              onMouseDown={(e) => { e.preventDefault(); setViewerDragging(true); setViewerStartX(e.clientX); setViewerDeltaX(0); }}
+              onMouseMove={(e) => { if (!viewerDragging) return; setViewerDeltaX(e.clientX - viewerStartX); }}
+              onMouseUp={() => {
+                if (!viewerDragging) return;
+                const width = viewerRef.current?.offsetWidth || 800;
+                const threshold = Math.max(60, width * 0.15);
+                const total = previewPosts.length || 1;
+                if (viewerDeltaX <= -threshold) {
+                  setViewerIndex(prev => {
+                    const idx = prev ?? 0;
+                    return Math.min(idx + 1, total - 1);
+                  });
+                } else if (viewerDeltaX >= threshold) {
+                  setViewerIndex(prev => {
+                    const idx = prev ?? 0;
+                    return Math.max(idx - 1, 0);
+                  });
+                }
+                setViewerDragging(false);
+                setViewerDeltaX(0);
+              }}
+              onTouchStart={(e) => { const t = e.touches[0]; setViewerDragging(true); setViewerStartX(t.clientX); setViewerDeltaX(0); }}
+              onTouchMove={(e) => { const t = e.touches[0]; setViewerDeltaX(t.clientX - viewerStartX); e.preventDefault(); }}
+              onTouchEnd={() => {
+                const width = viewerRef.current?.offsetWidth || 800;
+                const threshold = Math.max(60, width * 0.15);
+                const total = previewPosts.length || 1;
+                if (viewerDeltaX <= -threshold) {
+                  setViewerIndex(prev => {
+                    const idx = prev ?? 0;
+                    return Math.min(idx + 1, total - 1);
+                  });
+                } else if (viewerDeltaX >= threshold) {
+                  setViewerIndex(prev => {
+                    const idx = prev ?? 0;
+                    return Math.max(idx - 1, 0);
+                  });
+                }
+                setViewerDragging(false);
+                setViewerDeltaX(0);
+              }}
+              style={{ touchAction: 'none' }}
+            >
+              {previewPosts.length > 0 && (
+                <div className="relative w-full h-full">
+                  <div
+                    className="flex w-full h-full transition-transform duration-300 ease-out"
+                    style={{
+                      width: `${previewPosts.length * 100}%`,
+                      transform: (() => {
+                        const total = previewPosts.length || 1;
+                        const idx = viewerIndex ?? 0;
+                        let delta = viewerDeltaX;
+                        if (idx === 0 && delta > 0) delta = delta * 0.35; // 左边界阻尼
+                        if (idx === total - 1 && delta < 0) delta = delta * 0.35; // 右边界阻尼
+                        return `translate3d(calc(-${idx * (100 / total)}% + ${delta}px), 0, 0)`;
+                      })(),
+                      transition: viewerDragging ? 'none' : 'transform 300ms ease-out'
+                    }}
+                  >
+                    {previewPosts.map((p) => (
+                      <div key={p.id} className="h-full flex-shrink-0 flex items-center justify-center" style={{ width: `${100 / (previewPosts.length || 1)}%` }}>
+                        <div className="relative w-full h-full">
+                          {p.images?.[0] ? (
+                            <Image src={p.images[0]} alt={p.title || "Post image"} fill className="object-contain" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+                              <span className="text-6xl opacity-50">📷</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+              {/* Arrows */}
+              {previewPosts.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setViewerIndex(prev => { const idx = prev ?? 0; return Math.max(idx - 1, 0); })}
+                    disabled={(viewerIndex ?? 0) <= 0}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => setViewerIndex(prev => { const total = previewPosts.length; const idx = prev ?? 0; return Math.min(idx + 1, total - 1); })}
+                    disabled={(viewerIndex ?? 0) >= (previewPosts.length - 1)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center"
+                  >
+                    ›
+                  </button>
+                </>
               )}
             </div>
 
