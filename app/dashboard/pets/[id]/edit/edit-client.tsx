@@ -177,11 +177,11 @@ export default function EditProfileClient({ petId }: Props) {
           });
         }
 
-        // Set default emergency data for now
+        // Set emergency data from contact_prefs.other_link
         setEmergency({
           vet: {
-            name: "Local Vet Clinic",
-            phone: "555-0123"
+            name: contactData?.other_link || "",
+            phone: ""
           }
         });
 
@@ -426,7 +426,8 @@ export default function EditProfileClient({ petId }: Props) {
         phone: (phone && phone !== "(555) 123-4567") ? phone : null,
         email: (email && email !== "john.smith@gmail.com") ? email : null,
         show_phone: !!(phone && phone.trim() && phone !== "(555) 123-4567"),
-        show_email: !!(email && email.trim() && email !== "john.smith@gmail.com")
+        show_email: !!(email && email.trim() && email !== "john.smith@gmail.com"),
+        other_link: (vetName && vetName.trim()) ? vetName : null
       };
       // Also persist owner's display name into contact_prefs.owner_name if available
       if (ownerName && ownerName !== "John Smith") {
@@ -467,13 +468,8 @@ export default function EditProfileClient({ petId }: Props) {
       
       console.log("Pet data after save:", petData);
       
-      if (petData?.slug) {
-        // Navigate to the public profile to see the changes
-        router.push(`/p/${petData.slug}`);
-      } else {
-        // Fallback to dashboard if slug not found
-        router.push(`/dashboard/pets`);
-      }
+      // Navigate back to current pet's posts page after saving
+      router.push(`/dashboard/pets/${petId}/posts`);
     } catch (error) {
       console.error("Failed to save profile:", error);
       alert("Failed to save profile. Please try again.");

@@ -2,6 +2,7 @@ import Image from "next/image";
 
 type Post = {
   id: string;
+  pet_id: string;
   title?: string;
   content: string;
   images?: string[];
@@ -11,9 +12,10 @@ type Post = {
 type Props = {
   posts: Post[];
   onPostClick?: (post: Post) => void;
+  isPublic?: boolean;
 };
 
-export default function PostLibrary({ posts, onPostClick }: Props) {
+export default function PostLibrary({ posts, onPostClick, isPublic = false }: Props) {
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Jan 31";
     return new Date(dateStr).toLocaleDateString("en-US", {

@@ -29,7 +29,11 @@ type Owner = {
   photo_url?: string;
 } | null;
 
-export default function PostsLostClient({ pet, ownerInfo }: { pet: Pet; ownerInfo: Owner }) {
+type Emergency = {
+  vet?: { name?: string; phone?: string };
+} | null;
+
+export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, isPublic = false }: { pet: Pet; ownerInfo: Owner; emergencyInfo?: Emergency; isPublic?: boolean }) {
   // 同步 /p 页面逻辑：用本地状态控制 Lost/Found 的展示与动画
   const [showLostFound, setShowLostFound] = useState(pet.lost_mode === true);
   const [petLostMode, setPetLostMode] = useState<boolean>(pet.lost_mode ?? false);
@@ -65,8 +69,9 @@ export default function PostsLostClient({ pet, ownerInfo }: { pet: Pet; ownerInf
         pet={updatedPet}
         onToggleLostFound={handleToggleLostFound}
         showLostFound={showLostFound}
+        isPublic={isPublic}
       />
-      <PostsClient petId={pet.id} ownerInfo={ownerInfo ?? undefined} />
+      <PostsClient petId={pet.id} ownerInfo={ownerInfo ?? undefined} emergencyInfo={emergencyInfo} isPublic={isPublic} />
     </div>
   );
 }

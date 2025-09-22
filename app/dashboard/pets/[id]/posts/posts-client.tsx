@@ -17,6 +17,10 @@ type Props = {
     email?: string;
     photo_url?: string;
   } | null;
+  emergencyInfo?: {
+    vet?: { name?: string; phone?: string };
+  } | null;
+  isPublic?: boolean;
 };
 
 type MockPost = {
@@ -30,7 +34,7 @@ type MockPost = {
   tags?: string[];
 };
 
-export default function PostsClient({ petId, ownerInfo }: Props) {
+export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic = false }: Props) {
   const [posts, setPosts] = useState<MockPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -71,6 +75,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
   const [angleDeg, setAngleDeg] = useState(0); // continuous angle during drag
   const [snapAngleDeg, setSnapAngleDeg] = useState(0); // snapping target angle
   const [isSnapping, setIsSnapping] = useState(false);
+  const [clickSource, setClickSource] = useState<'carousel' | 'library'>('carousel');
 
   // ESC键关闭popup
   useEffect(() => {
@@ -149,6 +154,21 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
     return withImages.slice(0, 9);
   }, [posts]);
 
+  // 所有有图的post（用于Post Library popup）
+  const allImagePosts = useMemo(() => {
+    const list = posts || [];
+    return list.filter(p => Array.isArray(p.images) && p.images.length > 0 && !!p.images[0]);
+  }, [posts]);
+
+  // 根据点击来源获取对应的数据源
+  const getPopupDataSource = () => {
+    if (clickSource === 'carousel') {
+      return previewPosts; // 最多9张
+    } else {
+      return allImagePosts; // 所有有图的post
+    }
+  };
+
   // 轮播逻辑：计算当前显示的三张图片（来自预览数据源）
   const getCurrentPosts = () => {
     if (!previewPosts || previewPosts.length === 0) return [];
@@ -173,9 +193,20 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
   // 点击中间图片的处理函数（显示popup）
   const handleMiddleImageClick = (post: MockPost) => {
     if (suppressClick || isDragging) return;
+    setClickSource('carousel'); // 设置来源为轮播
     setSelectedPost(post);
     // 将 viewerIndex 对齐到当前前方项
     const idx = previewPosts.findIndex(p => p.id === post.id);
+    setViewerIndex(idx >= 0 ? idx : 0);
+    setShowPopup(true);
+  };
+
+  // Post Library点击处理函数
+  const handleLibraryPostClick = (post: any) => {
+    setClickSource('library'); // 设置来源为Post Library
+    setSelectedPost(post);
+    // 在allImagePosts中找到索引
+    const idx = allImagePosts.findIndex(p => p.id === post.id);
     setViewerIndex(idx >= 0 ? idx : 0);
     setShowPopup(true);
   };
@@ -326,35 +357,32 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
     setIsExpanded(false);
   }, [viewerIndex]);
 
-  // Detect truncation for title/content only when collapsed (source of truth for canExpand)
+  // Detect truncation for content only when collapsed (source of truth for canExpand)
   useEffect(() => {
     if (!showPopup) return;
     if (isExpanded) return; // measure collapsed state only
     const measure = () => {
       // derive current post content presence
       const idx = viewerIndex ?? 0;
-      const cur = (previewPosts && previewPosts.length > 0) ? previewPosts[idx] : undefined;
+      const popupDataSource = getPopupDataSource();
+      const cur = (popupDataSource && popupDataSource.length > 0) ? popupDataSource[idx] : undefined;
       const contentText = cur?.content?.trim() || "";
       const hasContentLocal = contentText.length > 0;
 
-      let truncTitle = false;
       let truncContent = false;
-      if (viewerTitleRef.current) {
-        const el = viewerTitleRef.current;
-        truncTitle = (el.scrollWidth > el.clientWidth) || (el.scrollHeight > el.clientHeight);
-      }
-      if (viewerContentRef.current) {
-        const el = viewerContentRef.current;
-        truncContent = el.scrollHeight > el.clientHeight;
+      if (hasContentLocal) {
+        // 基于文本长度检测 - 更简单可靠
+        // 大约1行能容纳的字符数（根据字体大小和容器宽度估算）
+        const estimatedCharsPerLine = 50; // 可以根据实际情况调整
+        truncContent = contentText.length > estimatedCharsPerLine;
       }
       setHasContent(hasContentLocal);
-      setIsTruncTitle(truncTitle);
       setIsTruncContent(truncContent);
-      setCanExpand(hasContentLocal && (truncTitle || truncContent));
+      setCanExpand(hasContentLocal && truncContent);
     };
     const id = requestAnimationFrame(measure);
     return () => cancelAnimationFrame(id);
-  }, [showPopup, viewerIndex, isExpanded, previewPosts]);
+  }, [showPopup, viewerIndex, isExpanded, clickSource, previewPosts, allImagePosts]);
 
   // Expanded panel: dynamic height with 60% cap of image area
   useEffect(() => {
@@ -456,13 +484,15 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
             variant="default"
             className="mb-0"
           />
-          <button
-            onClick={handleGoToCreate}
-            className="px-4 py-2 rounded-full text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all"
-            style={{ backgroundColor: "#EC5914" }}
-          >
-            + Create
-          </button>
+          {!isPublic && (
+            <button
+              onClick={handleGoToCreate}
+              className="px-4 py-2 rounded-full text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all"
+              style={{ backgroundColor: "#EC5914" }}
+            >
+              + Create
+            </button>
+          )}
         </div>
 
          {/* Posts Cards - Top half outside background */}
@@ -652,7 +682,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
 
            {/* Content container */}
            <div className="relative z-10 pt-[140px]">
-            <PostLibrary posts={posts || []} onPostClick={(p: any) => handleMiddleImageClick(p)} />
+            <PostLibrary posts={posts || []} onPostClick={handleLibraryPostClick} isPublic={isPublic} />
            </div>
         </div>
       </div>
@@ -661,7 +691,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
         <div className="text-sm text-red-600">{error}</div>
       ) : null}
 
-      {ownerInfo && <OwnerInfo owner={ownerInfo} />}
+      {ownerInfo && <OwnerInfo owner={ownerInfo} emergency={emergencyInfo} />}
 
       {/* Post Popup Modal */}
       {showPopup && selectedPost && (
@@ -684,20 +714,22 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
             </button>
 
             {/* Delete Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (selectedPost) {
-                  handleShowDeleteModal(selectedPost.id);
-                }
-              }}
-              className="absolute top-4 left-4 z-10 w-8 h-8 bg-red-500/80 hover:bg-red-600/90 rounded-full flex items-center justify-center text-white transition-colors"
-              title="Delete post"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+            {!isPublic && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedPost) {
+                    handleShowDeleteModal(selectedPost.id);
+                  }
+                }}
+                className="absolute top-4 left-4 z-10 w-8 h-8 bg-red-500/80 hover:bg-red-600/90 rounded-full flex items-center justify-center text-white transition-colors"
+                title="Delete post"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
 
             {/* Viewer with swipe */}
             <div
@@ -710,7 +742,8 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                 if (!viewerDragging) return;
                 const width = viewerRef.current?.offsetWidth || 800;
                 const threshold = Math.max(60, width * 0.15);
-                const total = previewPosts.length || 1;
+                const popupDataSource = getPopupDataSource();
+                const total = popupDataSource.length || 1;
                 if (viewerDeltaX <= -threshold) {
                   setViewerIndex(prev => {
                     const idx = prev ?? 0;
@@ -731,7 +764,8 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                 if (isExpanded) return;
                 const width = viewerRef.current?.offsetWidth || 800;
                 const threshold = Math.max(60, width * 0.15);
-                const total = previewPosts.length || 1;
+                const popupDataSource = getPopupDataSource();
+                const total = popupDataSource.length || 1;
                 if (viewerDeltaX <= -threshold) {
                   setViewerIndex(prev => {
                     const idx = prev ?? 0;
@@ -748,39 +782,42 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
               }}
               style={{ touchAction: 'none' }}
             >
-              {previewPosts.length > 0 && (
-                <div className="relative w-full h-full">
-                  <div
-                    className="flex w-full h-full transition-transform duration-300 ease-out"
-                    style={{
-                      width: `${previewPosts.length * 100}%`,
-                      transform: (() => {
-                        const total = previewPosts.length || 1;
-                        const idx = viewerIndex ?? 0;
-                        let delta = viewerDeltaX;
-                        if (idx === 0 && delta > 0) delta = delta * 0.35; // 左边界阻尼
-                        if (idx === total - 1 && delta < 0) delta = delta * 0.35; // 右边界阻尼
-                        return `translate3d(calc(-${idx * (100 / total)}% + ${delta}px), 0, 0)`;
-                      })(),
-                      transition: viewerDragging ? 'none' : 'transform 300ms ease-out'
-                    }}
-                  >
-                    {previewPosts.map((p) => (
-                      <div key={p.id} className="h-full flex-shrink-0 flex items-center justify-center" style={{ width: `${100 / (previewPosts.length || 1)}%` }}>
-                        <div className="relative w-full h-full">
-                          {p.images?.[0] ? (
-                            <Image src={p.images[0]} alt={p.title || "Post image"} fill className="object-contain" />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
-                              <span className="text-6xl opacity-50">📷</span>
-                            </div>
-                          )}
+              {(() => {
+                const popupDataSource = getPopupDataSource();
+                return popupDataSource.length > 0 && (
+                  <div className="relative w-full h-full">
+                    <div
+                      className="flex w-full h-full transition-transform duration-300 ease-out"
+                      style={{
+                        width: `${popupDataSource.length * 100}%`,
+                        transform: (() => {
+                          const total = popupDataSource.length || 1;
+                          const idx = viewerIndex ?? 0;
+                          let delta = viewerDeltaX;
+                          if (idx === 0 && delta > 0) delta = delta * 0.35; // 左边界阻尼
+                          if (idx === total - 1 && delta < 0) delta = delta * 0.35; // 右边界阻尼
+                          return `translate3d(calc(-${idx * (100 / total)}% + ${delta}px), 0, 0)`;
+                        })(),
+                        transition: viewerDragging ? 'none' : 'transform 300ms ease-out'
+                      }}
+                    >
+                      {popupDataSource.map((p) => (
+                        <div key={p.id} className="h-full flex-shrink-0 flex items-center justify-center" style={{ width: `${100 / (popupDataSource.length || 1)}%` }}>
+                          <div className="relative w-full h-full">
+                            {p.images?.[0] ? (
+                              <Image src={p.images[0]} alt={p.title || "Post image"} fill className="object-contain" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+                                <span className="text-6xl opacity-50">📷</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {/* Top overlay: only shown when expanded; clicking collapses */}
               {isExpanded && canExpand && (
                 <div
@@ -790,9 +827,11 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                 />
               )}
               {/* Bottom text panel overlay over image */}
-              {previewPosts.length > 0 && (() => {
+              {(() => {
+                const popupDataSource = getPopupDataSource();
+                if (popupDataSource.length === 0) return null;
                 const idx = viewerIndex ?? 0;
-                const cur = previewPosts[idx];
+                const cur = popupDataSource[idx];
                 const dateStr = cur?.created_at ? new Date(cur.created_at).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/') : "";
                 return (
                   <div
@@ -814,11 +853,33 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                   >
                     <div ref={panelContentRef}>
                       <div className="flex items-start justify-between mb-1 gap-2">
-                        <div ref={viewerTitleRef} className={`flex-1 min-w-0 font-bold text-sm leading-tight whitespace-pre-wrap break-words ${isExpanded ? '' : 'line-clamp-2'}`}>{cur?.title || 'Untitled Post'}</div>
+                        <div 
+                          ref={viewerTitleRef} 
+                          className="flex-1 min-w-0 font-bold text-sm leading-tight whitespace-pre-wrap break-words"
+                          style={isExpanded ? {} : {
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {cur?.title || 'Untitled Post'}
+                        </div>
                         <div className="shrink-0 text-[11px] opacity-80 whitespace-nowrap">{dateStr}</div>
                       </div>
                       {hasContent ? (
-                        <div ref={viewerContentRef} className={`text-[13px] leading-snug whitespace-pre-wrap break-words ${isExpanded ? '' : 'line-clamp-1'}`}>{cur?.content}</div>
+                        <div 
+                          ref={viewerContentRef} 
+                          className="text-[13px] leading-snug whitespace-pre-wrap break-words"
+                          style={isExpanded ? {} : {
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {cur?.content}
+                        </div>
                       ) : null}
                     </div>
                     {canExpand && (
@@ -828,24 +889,27 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                 );
               })()}
               {/* Arrows */}
-              {previewPosts.length > 1 && !isExpanded && (
-                <>
-                  <button
-                    onClick={() => setViewerIndex(prev => { const idx = prev ?? 0; return Math.max(idx - 1, 0); })}
-                    disabled={(viewerIndex ?? 0) <= 0}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center z-20"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    onClick={() => setViewerIndex(prev => { const total = previewPosts.length; const idx = prev ?? 0; return Math.min(idx + 1, total - 1); })}
-                    disabled={(viewerIndex ?? 0) >= (previewPosts.length - 1)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center z-20"
-                  >
-                    ›
-                  </button>
-                </>
-              )}
+              {(() => {
+                const popupDataSource = getPopupDataSource();
+                return popupDataSource.length > 1 && !isExpanded && (
+                  <>
+                    <button
+                      onClick={() => setViewerIndex(prev => { const idx = prev ?? 0; return Math.max(idx - 1, 0); })}
+                      disabled={(viewerIndex ?? 0) <= 0}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center z-20"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      onClick={() => setViewerIndex(prev => { const total = popupDataSource.length; const idx = prev ?? 0; return Math.min(idx + 1, total - 1); })}
+                      disabled={(viewerIndex ?? 0) >= (popupDataSource.length - 1)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center z-20"
+                    >
+                      ›
+                    </button>
+                  </>
+                );
+              })()}
             </div>
 
             

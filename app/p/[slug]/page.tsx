@@ -35,6 +35,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   // Fetch owner info and contact preferences
   let ownerInfo = null;
+  let emergencyInfo = null;
   if (pet) {
     const { data: contactPrefs, error: contactError } = await supabase
       .from("contact_prefs")
@@ -65,7 +66,16 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       photo_url: user?.user_metadata?.avatar_url || user?.user_metadata?.picture
     };
     
+    // Create emergency info from contact_prefs.other_link
+    emergencyInfo = {
+      vet: {
+        name: contactPrefs?.other_link || "",
+        phone: ""
+      }
+    };
+    
     console.log("Final owner info:", ownerInfo);
+    console.log("Emergency info:", emergencyInfo);
   }
 
   if (!pet) {
@@ -80,7 +90,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="min-h-screen">
-      <PostsLostClient pet={pet} ownerInfo={ownerInfo} />
+      <PostsLostClient pet={pet} ownerInfo={ownerInfo} emergencyInfo={emergencyInfo} isPublic={true} />
     </main>
   );
 }

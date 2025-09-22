@@ -15,9 +15,10 @@ type Post = {
 type Props = {
   post: Post;
   onDelete?: (id: string) => void;
+  isPublic?: boolean;
 };
 
-export default function PostCard({ post, onDelete }: Props) {
+export default function PostCard({ post, onDelete, isPublic = false }: Props) {
   const [showMenu, setShowMenu] = useState(false);
 
   const formatDate = (dateStr?: string) => {
@@ -33,27 +34,29 @@ export default function PostCard({ post, onDelete }: Props) {
   return (
     <article className="rounded-2xl border border-[color:var(--brand-200)] soft-shadow p-4 bg-white space-y-3 relative">
       {/* Menu button */}
-      <div className="absolute top-3 right-3">
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"
-        >
-          ⋯
-        </button>
-        {showMenu && (
-          <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[120px] z-10">
-            <button
-              onClick={() => {
-                onDelete?.(post.id);
-                setShowMenu(false);
-              }}
-              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              Delete
-            </button>
-          </div>
-        )}
-      </div>
+      {!isPublic && onDelete && (
+        <div className="absolute top-3 right-3">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"
+          >
+            ⋯
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[120px] z-10">
+              <button
+                onClick={() => {
+                  onDelete?.(post.id);
+                  setShowMenu(false);
+                }}
+                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Content */}
       <div className="pr-8">

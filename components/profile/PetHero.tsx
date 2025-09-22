@@ -21,9 +21,10 @@ type Props = {
 	onToggleLostFound?: () => void;
 	showLostFound?: boolean; // 新增：是否显示Lost/Found界面
 	showLostButton?: boolean; // 新增：是否显示右上角 Lost 按钮
+	isPublic?: boolean; // 新增：是否为公开页面
 };
 
-export default function PetHero({ pet, tags = [], gender, images, petId, onToggleLostFound, showLostFound, showLostButton = true }: Props) {
+export default function PetHero({ pet, tags = [], gender, images, petId, onToggleLostFound, showLostFound, showLostButton = true, isPublic = false }: Props) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Handle avatar_url as either string or array, filter out empty values
@@ -292,21 +293,23 @@ export default function PetHero({ pet, tags = [], gender, images, petId, onToggl
           </div>
         </div>
         {/* Edit Button */}
-        {petId ? (
-          <Link
-            href={`/dashboard/pets/${petId}/edit`}
-            className="px-4 py-2 rounded-full text-white text-sm font-medium inline-block"
-            style={{ backgroundColor: "#EC5914" }}
-          >
-            + Edit
-          </Link>
-        ) : (
-          <button
-            className="px-4 py-2 rounded-full text-white text-sm font-medium"
-            style={{ backgroundColor: "#EC5914" }}
-          >
-            + Edit
-          </button>
+        {!isPublic && (
+          petId ? (
+            <Link
+              href={`/dashboard/pets/${petId}/edit`}
+              className="px-4 py-2 rounded-full text-white text-sm font-medium inline-block"
+              style={{ backgroundColor: "#EC5914" }}
+            >
+              + Edit
+            </Link>
+          ) : (
+            <button
+              className="px-4 py-2 rounded-full text-white text-sm font-medium"
+              style={{ backgroundColor: "#EC5914" }}
+            >
+              + Edit
+            </button>
+          )
         )}
       </div>
 
