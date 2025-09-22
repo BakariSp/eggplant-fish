@@ -1,5 +1,7 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase";
 import PostsLostClient from "./PostsLostClient";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 // Force dynamic rendering to prevent caching
 export const dynamic = 'force-dynamic';
@@ -9,7 +11,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const supabase = await getServerSupabaseClient();
   
-  // Fetch pet data directly from database (same as public profile page)
+  // 1) Load pet first (need slug and owner for gating)
   const { data: pet, error } = await supabase
     .from("pets")
     .select("*")
@@ -32,15 +34,58 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
       microchip_id: pet.microchip_id,
       neuter_status: pet.neuter_status,
       year: pet.year,
-      month: pet.month
+      month: pet.month,
+      owner_user_id: pet.owner_user_id,
+      slug: pet.slug
     } : null, 
     error 
   });
 
-  // Fetch owner info and contact preferences (same as public profile page)
+  // Not found → render simple UI
+  if (!pet) {
+    return (
+      <main className="min-h-screen">
+        <div className="px-3 sm:px-4 pt-1 pb-6 max-w-[760px] mx-auto">
+          <div className="text-center py-8">
+            <p className="text-gray-500">Pet not found</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // 2) Ownership gate (server): only block clearly non-owner by id; otherwise let client fix
+  let initialCanEdit = false;
+  let ownerAuthEmail: string | undefined = undefined;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id || null;
+    const ownerUserId = pet.owner_user_id || null;
+
+    if (!!currentUserId && !!ownerUserId) {
+      if (currentUserId !== ownerUserId) {
+        // clearly not the owner by id → redirect to public
+        redirect(`/p/${pet.slug}`);
+      } else {
+        initialCanEdit = true;
+      }
+    }
+  } catch (e) {
+    // ignore; client will re-check
+  }
+
+  // fetch owner auth email to help client fallback
+  try {
+    const adminSupabase = getAdminSupabaseClient();
+    const { data: { user: ownerUser } } = await adminSupabase.auth.admin.getUserById(pet.owner_user_id);
+    ownerAuthEmail = ownerUser?.email || undefined;
+  } catch {}
+
+  // 3) Load page data (public-safe fields)
   let ownerInfo = null;
   let emergencyInfo = null;
-  if (pet) {
+  {
     const { data: contactPrefs, error: contactError } = await supabase
       .from("contact_prefs")
       .select("*")
@@ -49,7 +94,6 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
 
     console.log("Contact preferences loaded:", { contactPrefs, contactError });
 
-    // Get user info from auth.users using admin client
     const adminSupabase = getAdminSupabaseClient();
     const { data: { user }, error: userError } = await adminSupabase.auth.admin.getUserById(pet.owner_user_id);
     
@@ -70,7 +114,6 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
       photo_url: user?.user_metadata?.avatar_url || user?.user_metadata?.picture
     };
     
-    // Create emergency info from contact_prefs.other_link
     emergencyInfo = {
       vet: {
         name: contactPrefs?.other_link || "",
@@ -82,21 +125,17 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
     console.log("Emergency info:", emergencyInfo);
   }
 
-  if (!pet) {
-    return (
-      <main className="min-h-screen">
-        <div className="px-3 sm:px-4 pt-1 pb-6 max-w-[760px] mx-auto">
-          <div className="text-center py-8">
-            <p className="text-gray-500">Pet not found</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="min-h-screen">
-      <PostsLostClient pet={pet} ownerInfo={ownerInfo} emergencyInfo={emergencyInfo} />
+      <PostsLostClient
+        pet={pet}
+        ownerInfo={ownerInfo}
+        emergencyInfo={emergencyInfo}
+        ownerUserId={pet.owner_user_id}
+        ownerAuthEmail={ownerAuthEmail}
+        slug={pet.slug}
+        initialCanEdit={initialCanEdit}
+      />
     </main>
   );
 }
