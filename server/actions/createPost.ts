@@ -6,7 +6,7 @@ import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase"
 const Input = z.object({
   petId: z.string().uuid(),
   title: z.string().trim().min(1).max(100), // 标题必填
-  content: z.string().max(2000).optional().default(""), // 内容可为空
+  content: z.string().max(500).optional().default(""), // 内容可为空，最多500字符
   images: z.array(z.string().url()).max(3).optional(),
 });
 

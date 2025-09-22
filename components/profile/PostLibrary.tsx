@@ -11,10 +11,9 @@ type Post = {
 type Props = {
   posts: Post[];
   onPostClick?: (post: Post) => void;
-  onDeletePost?: (postId: string) => void;
 };
 
-export default function PostLibrary({ posts, onPostClick, onDeletePost }: Props) {
+export default function PostLibrary({ posts, onPostClick }: Props) {
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Jan 31";
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -29,7 +28,7 @@ export default function PostLibrary({ posts, onPostClick, onDeletePost }: Props)
         <h2 className="text-2xl font-bold text-white">Post Library</h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 items-start">
         {posts.map((post) => (
           <div 
             key={post.id} 
@@ -37,7 +36,7 @@ export default function PostLibrary({ posts, onPostClick, onDeletePost }: Props)
             onClick={() => onPostClick?.(post)}
           >
             {/* Image */}
-            <div className="relative h-72 sm:h-96 w-full">
+            <div className="relative min-h-48 sm:min-h-64 w-full">
               {post.images?.[0] ? (
                 <Image 
                   src={post.images[0]} 
@@ -52,33 +51,42 @@ export default function PostLibrary({ posts, onPostClick, onDeletePost }: Props)
                 </div>
               )}
               
-              {/* Delete Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeletePost?.(post.id);
-                }}
-                className="absolute top-2 right-2 w-8 h-8 bg-red-500/80 hover:bg-red-600/90 rounded-full flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
-                title="Delete post"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
             </div>
             
             {/* Content */}
-            <div className="p-2" style={{ backgroundColor: "#3b3434" }}>
+            <div className="p-2 flex-1" style={{ backgroundColor: "#3b3434" }}>
               {/* Title and Date */}
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-sm text-white">{post.title || "Title Text"}</h3>
-                <span className="text-sm text-white">{formatDate(post.created_at)}</span>
+              <div className="flex items-start justify-between mb-1">
+                <h3 
+                  className="font-bold text-sm text-white flex-1 mr-2 leading-tight"
+                  style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {post.title || "Title Text"}
+                </h3>
+                <span className="text-sm text-white flex-shrink-0 mt-0.5">{formatDate(post.created_at)}</span>
               </div>
               
               {/* Description */}
-              <p className="text-xs text-white leading-relaxed line-clamp-2">
-                {post.content || "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore..."}
-              </p>
+              {post.content?.trim() && (
+                <p 
+                  className="text-xs text-white leading-relaxed"
+                  style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 1,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {post.content}
+                </p>
+              )}
             </div>
           </div>
         ))}

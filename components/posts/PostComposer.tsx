@@ -202,13 +202,18 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
               className="w-full rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
               maxLength={100}
             />
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What's your pet up to today?"
-              className="w-full h-20 rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
-              maxLength={500}
-            />
+            <div className="relative">
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="What's your pet up to today?"
+                className="w-full h-28 rounded-lg border border-[color:var(--brand-200)] px-3 py-2 pr-10 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
+                maxLength={500}
+              />
+              <div className="pointer-events-none absolute bottom-2 right-3 text-[10px] text-gray-400">
+                {`${content.length}/500`}
+              </div>
+            </div>
             
             {/* Image Carousel */}
             {images.length > 0 ? (

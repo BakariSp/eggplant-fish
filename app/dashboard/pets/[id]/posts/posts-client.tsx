@@ -5,8 +5,7 @@ import Image from "next/image";
 import PostComposer from "@/components/posts/PostComposer";
 import SectionHeader from "@/components/ui/SectionHeader";
 // Removed EmergencyPanel per new design
-import RecentPosts from "@/components/profile/RecentPosts";
-import RecentPostsContent from "@/components/profile/RecentPostsContent";
+ 
 import PostLibrary from "@/components/profile/PostLibrary";
 import OwnerInfo from "@/components/profile/OwnerInfo";
 
@@ -46,6 +45,21 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
   const [viewerStartX, setViewerStartX] = useState(0);
   const [viewerDeltaX, setViewerDeltaX] = useState(0);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isTruncTitle, setIsTruncTitle] = useState(false);
+  const [isTruncContent, setIsTruncContent] = useState(false);
+  const viewerTitleRef = useRef<HTMLDivElement>(null);
+  const viewerContentRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelContentRef = useRef<HTMLDivElement>(null);
+  const [panelHeightPx, setPanelHeightPx] = useState<number | null>(null);
+  const [panelOverflowAuto, setPanelOverflowAuto] = useState(false);
+  const [hasContent, setHasContent] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  // Bottom panel mouse-drag-to-scroll (desktop) state
+  const panelDragActiveRef = useRef(false);
+  const panelDragStartYRef = useRef(0);
+  const panelDragStartScrollRef = useRef(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -173,6 +187,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
     setViewerIndex(null);
     setViewerDragging(false);
     setViewerDeltaX(0);
+    setIsExpanded(false);
   };
 
   // 显示删除确认弹窗
@@ -195,6 +210,10 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
         setRefreshKey(prev => prev + 1);
         setShowDeleteModal(false);
         setPostToDelete(null);
+        // 如果当前删除的是正在查看的post，关闭popup
+        if (selectedPost && selectedPost.id === postToDelete) {
+          handleClosePopup();
+        }
       } else {
         console.error('Failed to delete post');
         alert('Failed to delete post. Please try again.');
@@ -301,6 +320,113 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
       document.removeEventListener('mouseup', onMouseUp);
     };
   }, [isDragging, moveDrag]);
+
+  // Reset expand state when switching image
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [viewerIndex]);
+
+  // Detect truncation for title/content only when collapsed (source of truth for canExpand)
+  useEffect(() => {
+    if (!showPopup) return;
+    if (isExpanded) return; // measure collapsed state only
+    const measure = () => {
+      // derive current post content presence
+      const idx = viewerIndex ?? 0;
+      const cur = (previewPosts && previewPosts.length > 0) ? previewPosts[idx] : undefined;
+      const contentText = cur?.content?.trim() || "";
+      const hasContentLocal = contentText.length > 0;
+
+      let truncTitle = false;
+      let truncContent = false;
+      if (viewerTitleRef.current) {
+        const el = viewerTitleRef.current;
+        truncTitle = (el.scrollWidth > el.clientWidth) || (el.scrollHeight > el.clientHeight);
+      }
+      if (viewerContentRef.current) {
+        const el = viewerContentRef.current;
+        truncContent = el.scrollHeight > el.clientHeight;
+      }
+      setHasContent(hasContentLocal);
+      setIsTruncTitle(truncTitle);
+      setIsTruncContent(truncContent);
+      setCanExpand(hasContentLocal && (truncTitle || truncContent));
+    };
+    const id = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(id);
+  }, [showPopup, viewerIndex, isExpanded, previewPosts]);
+
+  // Expanded panel: dynamic height with 60% cap of image area
+  useEffect(() => {
+    const compute = () => {
+      // If expansion is not available, reset and skip
+      if (!isExpanded || !canExpand) {
+        setPanelHeightPx(null);
+        setPanelOverflowAuto(false);
+        return;
+      }
+      const H = viewerRef.current?.clientHeight || 0;
+      const cap = Math.round(H * 0.6);
+      const contentH = panelContentRef.current?.scrollHeight || 0;
+      const target = Math.min(contentH + 40, cap);
+      setPanelHeightPx(target);
+      setPanelOverflowAuto(contentH > cap);
+    };
+    const id = requestAnimationFrame(compute);
+    return () => cancelAnimationFrame(id);
+  }, [isExpanded, viewerIndex, previewPosts, canExpand]);
+
+  // Recompute on window resize while expanded
+  useEffect(() => {
+    if (!isExpanded || !canExpand) return;
+    const onResize = () => {
+      const H = viewerRef.current?.clientHeight || 0;
+      const cap = Math.round(H * 0.6);
+      const contentH = panelContentRef.current?.scrollHeight || 0;
+      const target = Math.min(contentH + 20, cap);
+      setPanelHeightPx(target);
+      setPanelOverflowAuto(contentH > cap);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isExpanded, canExpand]);
+
+  // Top overlay height = viewer height - bottom panel height
+  const viewerHeight = viewerRef.current?.clientHeight || 0;
+  const collapsedPanelPx = 96; // h-24
+  const currentBottomPanelPx = isExpanded
+    ? (panelHeightPx !== null ? panelHeightPx : Math.round(viewerHeight * 0.6))
+    : collapsedPanelPx;
+  const overlayHeightPx = Math.max(0, viewerHeight - currentBottomPanelPx);
+
+  // Handlers for desktop drag-to-scroll inside bottom text panel
+  const onPanelMouseDown = (e: React.MouseEvent) => {
+    if (!isExpanded) return;
+    if (!panelRef.current) return;
+    panelDragActiveRef.current = true;
+    panelDragStartYRef.current = e.clientY;
+    panelDragStartScrollRef.current = panelRef.current.scrollTop;
+    (panelRef.current as HTMLDivElement).style.cursor = 'grabbing';
+    e.preventDefault();
+    e.stopPropagation();
+    const onMove = (ev: MouseEvent) => {
+      if (!panelDragActiveRef.current) return;
+      const dy = ev.clientY - panelDragStartYRef.current;
+      if (panelRef.current) {
+        panelRef.current.scrollTop = panelDragStartScrollRef.current - dy;
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+    };
+    const onUp = () => {
+      panelDragActiveRef.current = false;
+      if (panelRef.current) (panelRef.current as HTMLDivElement).style.cursor = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   return (
     <div className="space-y-5">
@@ -526,7 +652,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
 
            {/* Content container */}
            <div className="relative z-10 pt-[140px]">
-             <PostLibrary posts={posts || []} onPostClick={handleMiddleImageClick} onDeletePost={handleShowDeleteModal} />
+            <PostLibrary posts={posts || []} onPostClick={(p: any) => handleMiddleImageClick(p)} />
            </div>
         </div>
       </div>
@@ -544,7 +670,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
           onClick={handleClosePopup}
         >
           <div 
-            className="bg-[#f5f5dc] rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300 scale-100"
+            className="bg-[#f5f5dc] rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300 scale-100"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -557,13 +683,30 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
               </svg>
             </button>
 
+            {/* Delete Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectedPost) {
+                  handleShowDeleteModal(selectedPost.id);
+                }
+              }}
+              className="absolute top-4 left-4 z-10 w-8 h-8 bg-red-500/80 hover:bg-red-600/90 rounded-full flex items-center justify-center text-white transition-colors"
+              title="Delete post"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+
             {/* Viewer with swipe */}
             <div
               ref={viewerRef}
               className="relative h-[70vh] bg-black overflow-hidden select-none"
-              onMouseDown={(e) => { e.preventDefault(); setViewerDragging(true); setViewerStartX(e.clientX); setViewerDeltaX(0); }}
-              onMouseMove={(e) => { if (!viewerDragging) return; setViewerDeltaX(e.clientX - viewerStartX); }}
+              onMouseDown={(e) => { if (isExpanded) return; e.preventDefault(); setViewerDragging(true); setViewerStartX(e.clientX); setViewerDeltaX(0); }}
+              onMouseMove={(e) => { if (isExpanded) return; if (!viewerDragging) return; setViewerDeltaX(e.clientX - viewerStartX); }}
               onMouseUp={() => {
+                if (isExpanded) return;
                 if (!viewerDragging) return;
                 const width = viewerRef.current?.offsetWidth || 800;
                 const threshold = Math.max(60, width * 0.15);
@@ -582,9 +725,10 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                 setViewerDragging(false);
                 setViewerDeltaX(0);
               }}
-              onTouchStart={(e) => { const t = e.touches[0]; setViewerDragging(true); setViewerStartX(t.clientX); setViewerDeltaX(0); }}
-              onTouchMove={(e) => { const t = e.touches[0]; setViewerDeltaX(t.clientX - viewerStartX); e.preventDefault(); }}
+              onTouchStart={(e) => { if (isExpanded) return; const t = e.touches[0]; setViewerDragging(true); setViewerStartX(t.clientX); setViewerDeltaX(0); }}
+              onTouchMove={(e) => { if (isExpanded) return; const t = e.touches[0]; setViewerDeltaX(t.clientX - viewerStartX); e.preventDefault(); }}
               onTouchEnd={() => {
+                if (isExpanded) return;
                 const width = viewerRef.current?.offsetWidth || 800;
                 const threshold = Math.max(60, width * 0.15);
                 const total = previewPosts.length || 1;
@@ -637,20 +781,66 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
                   </div>
                 </div>
               )}
+              {/* Top overlay: only shown when expanded; clicking collapses */}
+              {isExpanded && canExpand && (
+                <div
+                  className="absolute top-0 left-0 right-0"
+                  style={{ height: `${overlayHeightPx}px`, zIndex: 16 }}
+                  onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+                />
+              )}
+              {/* Bottom text panel overlay over image */}
+              {previewPosts.length > 0 && (() => {
+                const idx = viewerIndex ?? 0;
+                const cur = previewPosts[idx];
+                const dateStr = cur?.created_at ? new Date(cur.created_at).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/') : "";
+                return (
+                  <div
+                    ref={panelRef}
+                    className={`absolute bottom-0 left-0 right-0 bg-black/90 text-white px-6 transition-all duration-300 overflow-x-hidden no-scrollbar ${isExpanded ? 'py-3' : 'h-24 overflow-hidden py-3'}`}
+                    onClick={(e) => { e.stopPropagation(); if (!isExpanded && canExpand) setIsExpanded(true); }}
+                    onWheel={(e) => { if (isExpanded && canExpand) e.stopPropagation(); }}
+                    onTouchMove={(e) => { if (isExpanded && canExpand) e.stopPropagation(); }}
+                    onMouseDown={(e) => { if (canExpand) onPanelMouseDown(e); }}
+                    style={{
+                      zIndex: 15,
+                      height: isExpanded ? (panelHeightPx !== null ? `${panelHeightPx}px` : undefined) : undefined,
+                      overflowY: isExpanded && canExpand ? (panelOverflowAuto ? 'auto' : 'hidden') : undefined,
+                      WebkitOverflowScrolling: isExpanded && canExpand ? ('touch' as any) : undefined,
+                      overscrollBehavior: isExpanded && canExpand ? ('contain' as any) : undefined,
+                      touchAction: isExpanded && canExpand ? ('pan-y' as any) : undefined,
+                      cursor: !isExpanded && canExpand ? 'pointer' : 'default'
+                    }}
+                  >
+                    <div ref={panelContentRef}>
+                      <div className="flex items-start justify-between mb-1 gap-2">
+                        <div ref={viewerTitleRef} className={`flex-1 min-w-0 font-bold text-sm leading-tight whitespace-pre-wrap break-words ${isExpanded ? '' : 'line-clamp-2'}`}>{cur?.title || 'Untitled Post'}</div>
+                        <div className="shrink-0 text-[11px] opacity-80 whitespace-nowrap">{dateStr}</div>
+                      </div>
+                      {hasContent ? (
+                        <div ref={viewerContentRef} className={`text-[13px] leading-snug whitespace-pre-wrap break-words ${isExpanded ? '' : 'line-clamp-1'}`}>{cur?.content}</div>
+                      ) : null}
+                    </div>
+                    {canExpand && (
+                      <div className="mt-1 text-[11px] text-white/70">{isExpanded ? 'Collapse' : 'More'}</div>
+                    )}
+                  </div>
+                );
+              })()}
               {/* Arrows */}
-              {previewPosts.length > 1 && (
+              {previewPosts.length > 1 && !isExpanded && (
                 <>
                   <button
                     onClick={() => setViewerIndex(prev => { const idx = prev ?? 0; return Math.max(idx - 1, 0); })}
                     disabled={(viewerIndex ?? 0) <= 0}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center z-20"
                   >
                     ‹
                   </button>
                   <button
                     onClick={() => setViewerIndex(prev => { const total = previewPosts.length; const idx = prev ?? 0; return Math.min(idx + 1, total - 1); })}
                     disabled={(viewerIndex ?? 0) >= (previewPosts.length - 1)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center z-20"
                   >
                     ›
                   </button>
@@ -658,35 +848,7 @@ export default function PostsClient({ petId, ownerInfo }: Props) {
               )}
             </div>
 
-            {/* Content */}
-            <div className="p-6 -mt-4">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {selectedPost.title || "Untitled Post"}
-              </h3>
-              <p className="text-gray-600 mb-4 line-clamp-6">
-                {selectedPost.content || "No description available."}
-              </p>
-              
-              {/* Tags */}
-              {selectedPost.tags && selectedPost.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {selectedPost.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Author and Date */}
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>By {ownerInfo?.name || "Unknown"}</span>
-                <span>{new Date(selectedPost.created_at).toLocaleDateString()}</span>
-              </div>
-            </div>
+            
           </div>
         </div>
       )}
