@@ -18,6 +18,42 @@ export default function AuthRedirect() {
         
         if (session?.user) {
           console.log("Authenticated user found:", session.user.email);
+          // If we have a pending activation from pre-login verification, claim it now and go to /setup
+          try {
+            const raw = sessionStorage.getItem("pendingActivation");
+            if (raw) {
+              const { tag_code, box_code } = JSON.parse(raw);
+              if (tag_code && box_code) {
+                await fetch("/api/activation/verify", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tag_code, box_code })
+                });
+              }
+              sessionStorage.removeItem("pendingActivation");
+              router.push('/setup');
+              return;
+            }
+          } catch {
+            // ignore claim errors; continue to DB check
+          }
+
+          // If user has a claimed activation (no pet yet), force to /setup
+          try {
+            const { data: pending } = await supabase
+              .from('activation_codes')
+              .select('tag_code')
+              .eq('used_by', session.user.id)
+              .eq('is_used', true)
+              .is('pet', null)
+              .limit(1);
+            if (pending && pending.length > 0) {
+              router.push('/setup');
+              return;
+            }
+          } catch {
+            // ignore DB error, fall back to original routing
+          }
           
           // Check if user has pets
           const { data: pets } = await supabase

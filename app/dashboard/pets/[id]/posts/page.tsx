@@ -8,15 +8,24 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function PetPostsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id } = await params; // id can be tag_code or uuid
   const supabase = await getServerSupabaseClient();
   
-  // 1) Load pet first (need slug and owner for gating)
-  const { data: pet, error } = await supabase
+  // 1) Resolve pet by tag_code first, fallback to id
+  let { data: pet, error } = await supabase
     .from("pets")
     .select("*")
-    .eq("id", id)
+    .eq("tag_code", id)
     .maybeSingle();
+  if (!pet) {
+    const fb = await supabase
+      .from("pets")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    pet = fb.data as any;
+    error = fb.error as any;
+  }
   
   console.log("Posts page - Pet data loaded:", { 
     id, 
@@ -35,8 +44,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
       neuter_status: pet.neuter_status,
       year: pet.year,
       month: pet.month,
-      owner_user_id: pet.owner_user_id,
-      slug: pet.slug
+      owner_user_id: pet.owner_user_id
     } : null, 
     error 
   });
@@ -66,7 +74,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
     if (!!currentUserId && !!ownerUserId) {
       if (currentUserId !== ownerUserId) {
         // clearly not the owner by id → redirect to public
-        redirect(`/p/${pet.slug}`);
+        redirect(`/p/${pet.tag_code || pet.id}`);
       } else {
         initialCanEdit = true;
       }
@@ -90,7 +98,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
       .from("contact_prefs")
       .select("*")
       .eq("pet_id", pet.id)
-      .single();
+      .maybeSingle();
 
     console.log("Contact preferences loaded:", { contactPrefs, contactError });
 
@@ -133,7 +141,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
         emergencyInfo={emergencyInfo}
         ownerUserId={pet.owner_user_id}
         ownerAuthEmail={ownerAuthEmail}
-        slug={pet.slug}
+        slug={pet.tag_code || pet.id}
         initialCanEdit={initialCanEdit}
       />
     </main>

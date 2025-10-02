@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
@@ -43,8 +43,10 @@ type Props = { petId: string };
 export default function EditProfileClient({ petId }: Props) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const DEFAULT_TAGS = ["Active", "Tries to eat things", "Friendly with cats", "Leash trained"];
-  const DEFAULT_ALLERGIES = ["Peanuts", "Chicken", "Grass"];
+  // Stable default arrays to avoid render loops in children relying on reference equality
+  const DEFAULT_TAGS_MEMO = useMemo(() => ["Active", "Tries to eat things", "Friendly with cats", "Leash trained"], []);
+  const DEFAULT_ALLERGIES_MEMO = useMemo(() => ["Peanuts", "Chicken", "Grass"], []);
+  const VACCINE_PLACEHOLDERS = useMemo(() => ["Rabies", "DHPP / DAPP"], []);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [owner, setOwner] = useState<Owner | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -97,7 +99,7 @@ export default function EditProfileClient({ petId }: Props) {
           .from("contact_prefs")
           .select("*")
           .eq("pet_id", petId)
-          .single();
+          .maybeSingle();
 
         if (!mounted) return;
 
@@ -127,10 +129,11 @@ export default function EditProfileClient({ petId }: Props) {
             birthdate: petData.birthdate || "",
             vaccinated: Array.isArray(petData.vaccinated) ? petData.vaccinated : [],
             microchip_id: petData.microchip_id || "", // Keep null as null, empty string as empty string
-            allergies: Array.isArray(petData.allergy_note) ? petData.allergy_note : DEFAULT_ALLERGIES,
+            // Keep DB baseline as empty when not set; defaults are for UI only
+            allergies: Array.isArray(petData.allergy_note) ? petData.allergy_note : [],
             neuter_status: petData.neuter_status, // Keep null as null
             gender: petData.gender || "", // Keep null as empty string for placeholder
-            traits: petData.traits ? (Array.isArray(petData.traits) ? petData.traits : [petData.traits]) : DEFAULT_TAGS,
+            traits: petData.traits ? (Array.isArray(petData.traits) ? petData.traits : [petData.traits]) : [],
             avatar_url: validAvatarUrls,
             year: petData.year || null, // Load year field
             month: petData.month || null // Load month field
@@ -139,13 +142,13 @@ export default function EditProfileClient({ petId }: Props) {
           setProfile(profile);
           
           // Initialize current tags and allergies (use defaults if DB empty)
-          setCurrentTags(profile.traits && profile.traits.length > 0 ? profile.traits : DEFAULT_TAGS);
-          setCurrentAllergies(profile.allergies && profile.allergies.length > 0 ? profile.allergies : DEFAULT_ALLERGIES);
+          setCurrentTags(profile.traits && profile.traits.length > 0 ? profile.traits : DEFAULT_TAGS_MEMO);
+          setCurrentAllergies(profile.allergies && profile.allergies.length > 0 ? profile.allergies : DEFAULT_ALLERGIES_MEMO);
           setCurrentVaccinations(profile.vaccinated && profile.vaccinated.length > 0 
             ? profile.vaccinated 
             : (Array.isArray(petData.vaccinated) && petData.vaccinated.length > 0 
                 ? petData.vaccinated 
-                : ["Rabies", "DHPP / DAPP"])) ;
+                : VACCINE_PLACEHOLDERS)) ;
           
           // Load existing profile photos from avatar_url array
           if (petData.avatar_url && Array.isArray(petData.avatar_url)) {
@@ -458,18 +461,19 @@ export default function EditProfileClient({ petId }: Props) {
       // Small delay to ensure database changes are committed
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Get the pet slug to redirect to public profile
+      // Get tag_code to build friendly redirect URL
       const supabaseClient = getBrowserSupabaseClient();
       const { data: petData } = await supabaseClient
         .from("pets")
-        .select("slug, name")
+        .select("tag_code")
         .eq("id", petId)
         .single();
       
       console.log("Pet data after save:", petData);
       
       // Navigate back to current pet's posts page after saving
-      router.push(`/dashboard/pets/${petId}/posts`);
+      const codeOrId = (petData as any)?.tag_code || petId;
+      router.push(`/dashboard/pets/${codeOrId}/posts`);
     } catch (error) {
       console.error("Failed to save profile:", error);
       alert("Failed to save profile. Please try again.");
@@ -699,7 +703,7 @@ export default function EditProfileClient({ petId }: Props) {
           </label>
           <div className="bg-white rounded-xl p-4">
             <PlaceholderTags
-              placeholderTags={DEFAULT_TAGS}
+              placeholderTags={DEFAULT_TAGS_MEMO}
               defaultValue={profile?.traits || []}
               onTagsChange={setCurrentTags}
               className=""
@@ -714,7 +718,7 @@ export default function EditProfileClient({ petId }: Props) {
           </label>
           <div className="bg-white rounded-xl p-4">
             <PlaceholderTags
-              placeholderTags={DEFAULT_ALLERGIES}
+              placeholderTags={DEFAULT_ALLERGIES_MEMO}
               defaultValue={profile?.allergies || []}
               onTagsChange={setCurrentAllergies}
               className=""

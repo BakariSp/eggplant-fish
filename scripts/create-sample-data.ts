@@ -39,7 +39,7 @@ async function createSampleData() {
     // Show current pets count
     const { data: pets, error } = await supabase
       .from("pets")
-      .select("id, name, slug, created_at")
+      .select("id, name, created_at")
       .limit(5);
 
     if (error) {
@@ -48,7 +48,8 @@ async function createSampleData() {
       console.log(`\n📊 Current pets in database: ${pets?.length || 0}`);
       if (pets && pets.length > 0) {
         pets.forEach((pet, index) => {
-          console.log(`  ${index + 1}. ${pet.name} (${pet.slug}) - Created: ${pet.created_at}`);
+          const code = (pet as any).tag_code || pet.id;
+          console.log(`  ${index + 1}. ${pet.name} (${code}) - Created: ${pet.created_at}`);
         });
       }
     }

@@ -7,13 +7,14 @@ import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
 interface Pet {
   id: string;
-  slug: string;
+  slug?: string;
   name: string;
   breed: string;
   avatar_url: string | string[];
   created_at: string;
   year: number | null;
   month: number | null;
+  tag_code?: string;
 }
 
 export default function PetsDashboard() {
@@ -40,7 +41,7 @@ export default function PetsDashboard() {
         // Fetch user's pets
         const { data: pets } = await supabase
           .from("pets")
-          .select("id, slug, name, breed, avatar_url, created_at, year, month")
+          .select("id, name, breed, avatar_url, created_at, year, month, tag_code")
           .eq("owner_user_id", session.user.id)
           .order("created_at", { ascending: false });
 
@@ -225,13 +226,13 @@ export default function PetsDashboard() {
                   <p className="text-gray-600 text-sm mb-3">{pet.breed || "Mixed Breed"}</p>
                   <div className="flex gap-2">
                     <Link
-                      href={`/dashboard/pets/${pet.id}/edit`}
+                      href={`/dashboard/pets/${pet.tag_code || pet.id}/edit`}
                       className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded text-sm text-center hover:bg-gray-200 transition-colors"
                     >
                       Edit Profile
                     </Link>
                     <Link
-                      href={`/dashboard/pets/${pet.id}/posts`}
+                      href={`/dashboard/pets/${pet.tag_code || pet.id}/posts`}
                       className="flex-1 bg-[#8f743c] text-white px-3 py-2 rounded text-sm text-center hover:bg-[#7d6635] transition-colors"
                     >
                       Manage Posts

@@ -10,7 +10,7 @@ export interface Pet {
   vaccinated?: boolean;
   allergy_note?: string;
   lost_mode?: boolean;
-  slug: string;
+  slug?: string;
   owner_user_id: string;
   created_at: string;
 }
@@ -22,7 +22,7 @@ export interface PetCreateData {
   avatar_url?: string;
   vaccinated?: boolean;
   allergy_note?: string;
-  slug: string;
+  slug?: string;
   owner_user_id: string;
 }
 
@@ -69,7 +69,7 @@ export class PetsDataAccess {
     try {
       const { data: pets, error } = await this.supabase
         .from("pets")
-        .select("id, name, slug, created_at")
+        .select("id, name, created_at")
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -92,7 +92,7 @@ export class PetsDataAccess {
     try {
       const { data: pet, error } = await this.supabase
         .from("pets")
-        .select("id, name, slug")
+        .select("id, name")
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
@@ -131,7 +131,7 @@ export class PetsDataAccess {
           vaccinated,
           allergy_note,
           lost_mode,
-          slug,
+          
           owner_user_id,
           created_at,
           gender,
@@ -141,8 +141,8 @@ export class PetsDataAccess {
           year,
           month
         `)
-        .eq("id", id)
-        .single();
+        .or(`id.eq.${id},tag_code.eq.${id}`)
+        .maybeSingle();
 
       if (petError) {
         console.error("Pet fetch error:", petError);
@@ -159,8 +159,8 @@ export class PetsDataAccess {
       const { data: contactPrefs } = await this.supabase
         .from("contact_prefs")
         .select("*")
-        .eq("pet_id", id)
-        .single();
+        .eq("pet_id", pet?.id || id)
+        .maybeSingle();
 
       // Format the response to match the expected structure
       const formattedPet: PetWithDetails = {

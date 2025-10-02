@@ -1,15 +1,132 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
 import Button from "@/components/ui/Button";
-// Removed legacy AuthNavbar in favor of global SiteHeader
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
 export default function LandingPage() {
+  const searchParams = useSearchParams();
+  const tagCode = useMemo(() => (searchParams.get("id") || "").trim(), [searchParams]);
+  const router = useRouter();
+
+  const [showForm, setShowForm] = useState(false);
+  const [boxCode, setBoxCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [error, setError] = useState("");
+
+  // If this tag_code already has a pet, redirect to dashboard posts using the tag_code
+  useEffect(() => {
+    (async () => {
+      if (!tagCode) return;
+      try {
+        const supabase = getBrowserSupabaseClient();
+        const { data: pet } = await supabase
+          .from("pets")
+          .select("id")
+          .eq("tag_code", tagCode)
+          .maybeSingle();
+        if (pet) {
+          router.replace(`/dashboard/pets/${tagCode}/posts`);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [tagCode, router]);
+
+  useEffect(() => {
+    setVerified(false);
+    setError("");
+  }, [boxCode, tagCode]);
+
+  const handleVerify = async () => {
+    if (!tagCode) {
+      setError("Missing tag code. Please scan the NFC tag again.");
+      return;
+    }
+    if (!boxCode || boxCode.length < 6) {
+      setError("Please enter your 6-character BOX CODE");
+      return;
+    }
+    try {
+      setVerifying(true);
+      setError("");
+      // If already logged in, include access token for robust user detection on the server
+      let accessToken: string | undefined;
+      try {
+        const supabase = getBrowserSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token;
+      } catch {}
+
+      const res = await fetch("/api/activation/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({ tag_code: tagCode, box_code: boxCode.toUpperCase() })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        setVerified(false);
+        setError(data?.error || "Verification failed. Please check your code.");
+        return;
+      }
+      setVerified(true);
+      try {
+        // Store for post-login claim if not yet claimed
+        if (!data.claimed && typeof window !== "undefined") {
+          const payload = { tag_code: tagCode, box_code: boxCode.toUpperCase(), ts: Date.now() };
+          sessionStorage.setItem("pendingActivation", JSON.stringify(payload));
+        }
+      } catch {
+        // ignore storage errors
+      }
+      // If already authenticated, go to setup immediately
+      try {
+        const supabase = getBrowserSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          router.push("/setup");
+        } else {
+          // Not logged in → start Google OAuth; AuthRedirect will claim and route to /setup
+          await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: `${window.location.origin}/` }
+          });
+        }
+      } catch {
+        // ignore and leave user on the page
+      }
+    } catch (e) {
+      setVerified(false);
+      setError(e instanceof Error ? e.message : "Verification failed");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleGoogleConnect = async () => {
+    try {
+      const supabase = getBrowserSupabaseClient();
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+    } catch {
+      // surface errors via provider redirect; keep UI simple here
+    }
+  };
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>
-
-      {/* Hero Section */}
       <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-        {/* Hero Illustration */}
         <div className="mb-12 w-full max-w-md">
           <div className="relative w-full max-w-[300px] mx-auto">
             <Image
@@ -23,27 +140,62 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Welcome Text */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-[#8f743c] mb-4">
+          <h1 className="text-4xl font-bold text-[#8f743c] mb-2">
             Welcome to<br />EGGPLANT.FISH
           </h1>
+          {tagCode && (
+            <p className="text-sm text-[#8f743c] opacity-80">Tag: {tagCode}</p>
+          )}
+          {!tagCode && (
+            <p className="text-sm text-red-600">Missing tag id. Open via NFC/QR link.</p>
+          )}
         </div>
 
-        {/* Get Started Button */}
-        <div className="w-full max-w-sm">
-          <Link href="/login">
-            <Button 
+        {!showForm ? (
+          <div className="w-full max-w-sm">
+            <Button
+              onClick={() => setShowForm(true)}
               className="w-full py-4 text-lg font-semibold rounded-2xl"
-              style={{ 
-                backgroundColor: "#8f743c",
-                color: "white"
-              }}
+              style={{ backgroundColor: "#8f743c", color: "white" }}
             >
               Get started →
             </Button>
-          </Link>
-        </div>
+          </div>
+        ) : (
+          <div className="w-full max-w-sm space-y-4">
+            {error && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+            <input
+              value={boxCode}
+              onChange={(e) => setBoxCode(e.target.value.toUpperCase())}
+              maxLength={6}
+              placeholder="Enter 6-char BOX CODE"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white text-center tracking-widest uppercase"
+            />
+            <Button
+              onClick={handleVerify}
+              disabled={verifying || !tagCode || boxCode.length !== 6}
+              className="w-full py-3 text-lg font-semibold rounded-2xl disabled:opacity-50"
+              style={{ backgroundColor: "#8f743c", color: "white" }}
+            >
+              {verifying ? "Verifying..." : verified ? "Verified ✓" : "Verify"}
+            </Button>
+
+            <div className="pt-2">
+              <Button
+                onClick={handleGoogleConnect}
+                variant="ghost"
+                className="w-full py-4 rounded-2xl border border-gray-300 bg-white"
+              >
+                Connect with Google
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

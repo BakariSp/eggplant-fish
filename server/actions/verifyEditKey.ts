@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getAdminSupabaseClient } from "@/lib/supabase";
 
 const Input = z.object({
-  slug: z.string().min(1),
+  tag_code: z.string().min(1), // public-facing tag code (preferred)；也兼容传 uuid id
   editKey: z.string().min(6),
 });
 
@@ -17,15 +17,24 @@ export async function verifyEditKey(raw: unknown): Promise<VerifyEditKeyResult> 
   if (!parsed.success) {
     return { ok: false, reason: "Invalid input" };
   }
-  const { slug, editKey } = parsed.data;
+  const { tag_code, editKey } = parsed.data;
   const supabase = getAdminSupabaseClient();
 
-  // 1) Look up pet by slug
-  const { data: pet, error: petErr } = await supabase
+  // 1) Look up pet by tag_code first, fallback to id
+  let { data: pet, error: petErr } = await supabase
     .from("pets")
     .select("id")
-    .eq("slug", slug)
+    .eq("tag_code", tag_code)
     .maybeSingle();
+  if (!pet) {
+    const fb = await supabase
+      .from("pets")
+      .select("id")
+      .eq("id", tag_code)
+      .maybeSingle();
+    pet = fb.data as any;
+    petErr = fb.error as any;
+  }
   if (petErr || !pet) return { ok: false, reason: "Pet not found" };
 
   // 2) Check edit_keys for valid, not used, not expired

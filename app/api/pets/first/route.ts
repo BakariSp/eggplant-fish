@@ -19,9 +19,9 @@ async function handleGetFirstPet(request: NextRequest) {
   return createSuccessResponse({
     pet,
     urls: {
-      posts: `/dashboard/pets/${pet.id}/posts`,
-      edit: `/dashboard/pets/${pet.id}/edit`,
-      public: `/p/${pet.slug}`
+      posts: `/dashboard/pets/${(pet as any).tag_code || pet.id}/posts`,
+      edit: `/dashboard/pets/${(pet as any).tag_code || pet.id}/edit`,
+      public: `/p/${(pet as any).tag_code || pet.id}`
     }
   }, `Successfully retrieved first pet: ${pet.name}`);
 }

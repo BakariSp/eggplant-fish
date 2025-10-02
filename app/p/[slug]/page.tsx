@@ -9,12 +9,21 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const supabase = await getServerSupabaseClient();
   
-  // Fetch pet data
-  const { data: pet, error } = await supabase
+  // Public page can take either tag_code or id; prefer tag_code for friendly URLs
+  let { data: pet, error } = await supabase
     .from("pets")
     .select("*")
-    .eq("slug", slug)
+    .eq("tag_code", slug)
     .maybeSingle();
+  if (!pet) {
+    const fb = await supabase
+      .from("pets")
+      .select("*")
+      .eq("id", slug)
+      .maybeSingle();
+    pet = fb.data as any;
+    error = fb.error as any;
+  }
   
   console.log("Public profile - Pet data loaded:", { 
     slug, 
@@ -41,7 +50,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       .from("contact_prefs")
       .select("*")
       .eq("pet_id", pet.id)
-      .single();
+      .maybeSingle();
 
     console.log("Contact preferences loaded:", { contactPrefs, contactError });
 

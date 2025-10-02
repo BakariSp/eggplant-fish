@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
@@ -15,6 +15,61 @@ export default function SetupPage() {
   const [error, setError] = useState("");
   const router = useRouter();
   const { user } = useAuth();
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [eligible, setEligible] = useState(false);
+  const [claimedTagCode, setClaimedTagCode] = useState<string | null>(null);
+
+  // Util to load current eligibility
+  const loadEligibility = async () => {
+    if (!user) return;
+    setCheckingEligibility(true);
+    const supabase = getBrowserSupabaseClient();
+    const { data, error } = await supabase
+      .from("activation_codes")
+      .select("tag_code")
+      .eq("used_by", user.id)
+      .eq("is_used", true)
+      .is("pet_id", null)
+      .limit(1)
+      .maybeSingle();
+    const nextEligible = !error && !!data;
+    if (eligible !== nextEligible) setEligible(nextEligible);
+    const nextTag = data?.tag_code ?? null;
+    if (claimedTagCode !== nextTag) setClaimedTagCode(nextTag);
+    if (checkingEligibility !== false) setCheckingEligibility(false);
+  };
+
+  // Initial eligibility check (guarded to run once per user id)
+  const didInitRef = useRef<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const uid = user?.id || null;
+      if (!uid) return;
+      if (didInitRef.current === uid) return; // prevent loops
+      didInitRef.current = uid;
+
+      await loadEligibility();
+      // Fallback: if not eligible but there is a pending activation in sessionStorage, try to claim now
+      try {
+        const raw = sessionStorage.getItem("pendingActivation");
+        if (raw) {
+          const { tag_code, box_code } = JSON.parse(raw);
+          if (tag_code && box_code) {
+            await fetch("/api/activation/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tag_code, box_code })
+            });
+            sessionStorage.removeItem("pendingActivation");
+            await loadEligibility();
+          }
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const handleCreatePet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,72 +88,31 @@ export default function SetupPage() {
       setLoading(true);
       setError("");
       
+      // Call server API to create pet and bind activation in one atomic flow
+      // Include access token for server to authenticate
       const supabase = getBrowserSupabaseClient();
-      
-      // Calculate age from birthdate
-      const { year, month } = calculateAgeFromBirthdate(petBirthdate);
-      
-      console.log("📅 Setup page - Age calculation:", {
-        birthdate: petBirthdate,
-        calculatedYear: year,
-        calculatedMonth: month
-      });
-      
-      // Generate slug for the pet
-      const slug = petName.toLowerCase()
-        .replace(/[^a-z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') + '-' + Math.random().toString(36).substr(2, 6);
-      
-      // Create pet record in database
-      const { data: pet, error: petError } = await supabase
-        .from("pets")
-        .insert({
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const res = await fetch('/api/pets/create-from-activation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          ...(user?.id ? { 'x-user-id': user.id } : {}),
+        },
+        body: JSON.stringify({
           name: petName.trim(),
-          breed: petBreed.trim() || null,
+          breed: (petBreed || '').trim() || null,
           birthdate: petBirthdate || null,
-          slug: slug,
-          owner_user_id: user.id,
-          vaccinated: ["Rabies", "DHPP / DAPP"], // Default vaccinations
-          allergy_note: ["Peanuts", "Chicken", "Grass"], // Default allergies
-          traits: ["Active", "Tries to eat things", "Friendly with cats", "Leash trained"], // Default traits
-          lost_mode: false,
-          gender: "unknown",
-          neuter_status: null,
-          year: year,
-          month: month,
-          microchip_id: null,
-          avatar_url: []
-        })
-        .select()
-        .single();
-
-      if (petError) {
-        throw new Error(petError.message);
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to create pet');
       }
 
-      console.log("🐾 Pet created successfully:", pet);
-
-      // Create contact preferences record
-      const { error: contactError } = await supabase
-        .from("contact_prefs")
-        .insert({
-          pet_id: pet.id,
-          owner_name: user.user_metadata?.full_name || user.email?.split('@')[0] || null,
-          phone: null,
-          email: user.email || null,
-          show_phone: false,
-          show_email: true,
-          show_sms: false
-        });
-
-      if (contactError) {
-        console.warn("Failed to create contact preferences:", contactError);
-        // Don't throw error for contact prefs, just log it
-      }
-
-      // Redirect to edit page with the real pet ID
-      router.push(`/dashboard/pets/${pet.id}/edit`);
+      // Redirect to edit page using tag_code when available (fallback to id)
+      router.push(`/dashboard/pets/${(result?.pet?.tag_code || result?.pet?.id)}/edit`);
       
     } catch (err) {
       console.error("Error creating pet:", err);

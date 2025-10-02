@@ -3,10 +3,8 @@ import { z } from "zod";
 // Common validation patterns
 export const uuidSchema = z.string().uuid("Invalid UUID format");
 
-export const slugSchema = z.string()
-  .min(3, "Slug must be at least 3 characters")
-  .max(50, "Slug must be less than 50 characters")
-  .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens");
+// Use explicit tag_code when referring to public-facing code
+export const tagCodeSchema = z.string().min(1);
 
 export const emailSchema = z.string().email("Invalid email format");
 
@@ -46,7 +44,7 @@ export const petCreateSchema = z.object({
     .trim()
     .optional(),
   
-  slug: slugSchema,
+  // slug removed; tag_code generated separately in server; no input here
   
   owner_user_id: uuidSchema
 });

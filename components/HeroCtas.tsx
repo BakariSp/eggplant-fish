@@ -5,8 +5,8 @@ import { useState } from "react";
 
 export default function HeroCtas() {
   const router = useRouter();
-  const [slug, setSlug] = useState("");
-  const [setupSlug, setSetupSlug] = useState("");
+  const [code, setCode] = useState("");
+  const [setupCode, setSetupCode] = useState("");
 
   return (
     <div className="flex flex-col gap-3 md:gap-4 w-full max-w-[640px]">
@@ -14,14 +14,14 @@ export default function HeroCtas() {
         className="flex gap-2 md:gap-3 items-stretch"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!slug) return;
-          router.push(`/p/${encodeURIComponent(slug)}`);
+          if (!code) return;
+          router.push(`/p/${encodeURIComponent(code)}`);
         }}
       >
         <input
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          placeholder="enter pet slug (e.g. buddy123)"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="enter tag code or id"
           className="border rounded-lg px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
         />
         <button
@@ -37,14 +37,14 @@ export default function HeroCtas() {
         className="flex gap-2 md:gap-3 items-stretch"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!setupSlug) return;
-          router.push(`/setup?pid=${encodeURIComponent(setupSlug)}`);
+          if (!setupCode) return;
+          router.push(`/setup?pid=${encodeURIComponent(setupCode)}`);
         }}
       >
         <input
-          value={setupSlug}
-          onChange={(e) => setSetupSlug(e.target.value)}
-          placeholder="enter pet slug from registration card"
+          value={setupCode}
+          onChange={(e) => setSetupCode(e.target.value)}
+          placeholder="enter tag code from registration card"
           className="border rounded-lg px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
         />
         <button

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 import LostPetReportWrapper from "@/components/profile/LostPetReportWrapper";
 import PetProfileSection from "@/components/profile/PetProfileSection";
@@ -51,7 +51,8 @@ export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, isPubli
 	const [showLostFound, setShowLostFound] = useState(pet.lost_mode === true);
 	const [petLostMode, setPetLostMode] = useState<boolean>(pet.lost_mode ?? false);
 	const [canEdit, setCanEdit] = useState<boolean>(initialCanEdit);
-	const router = useRouter();
+    const router = useRouter();
+    const pathname = usePathname();
 
 	useEffect(() => {
 		let cancelled = false;
@@ -67,9 +68,12 @@ export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, isPubli
 				const idMismatch = !!sid && !!ownerId && sid !== ownerId;
 				const emailMismatch = !!semail && !!ownerEmail && semail !== ownerEmail;
 
-				if (idMismatch || emailMismatch) {
-					// 明确非主人 → 替换到公开页
-					if (!cancelled && slug) router.replace(`/p/${slug}`);
+                if (idMismatch || emailMismatch) {
+                    // 明确非主人 → 替换到公开页，避免重定向到相同路径导致循环
+                    const target = slug ? `/p/${slug}` : "";
+                    if (!cancelled && target && pathname !== target) {
+                        router.replace(target);
+                    }
 					return;
 				}
 				// 能证明是主人（id 或 email 任何一项匹配）则开放编辑
