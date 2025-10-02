@@ -9,6 +9,7 @@ import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 export default function LandingPage() {
   const searchParams = useSearchParams();
   const tagCode = useMemo(() => (searchParams.get("id") || "").trim(), [searchParams]);
+  const step = useMemo(() => searchParams.get("step") || "", [searchParams]);
   const router = useRouter();
 
   const [showForm, setShowForm] = useState(false);
@@ -42,6 +43,20 @@ export default function LandingPage() {
     setError("");
   }, [boxCode, tagCode]);
 
+  // If redirected back from OAuth with step=code, ensure form is open and restore cached box code
+  useEffect(() => {
+    if (step === "code") {
+      setShowForm(true);
+      try {
+        const cached = sessionStorage.getItem("ef.box_code");
+        if (cached) {
+          setBoxCode(cached);
+          sessionStorage.removeItem("ef.box_code");
+        }
+      } catch {}
+    }
+  }, [step]);
+
   const handleVerify = async () => {
     if (!tagCode) {
       setError("Missing tag code. Please scan the NFC tag again.");
@@ -54,21 +69,26 @@ export default function LandingPage() {
     try {
       setVerifying(true);
       setError("");
-      // If already logged in, include access token for robust user detection on the server
-      let accessToken: string | undefined;
-      try {
-        const supabase = getBrowserSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        accessToken = session?.access_token;
-      } catch {}
+      const supabase = getBrowserSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Save and go to Google; return to this page focused on code entry
+        try {
+          sessionStorage.setItem("ef.box_code", boxCode);
+          sessionStorage.setItem("pendingActivation", JSON.stringify({ tag_code: tagCode, box_code: boxCode.toUpperCase() }));
+        } catch {}
+        const redirectTo = `${window.location.origin}/landing?id=${encodeURIComponent(tagCode)}&step=code`;
+        await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+        return;
+      }
 
       const res = await fetch("/api/activation/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ tag_code: tagCode, box_code: boxCode.toUpperCase() })
+        body: JSON.stringify({ tag_code: tagCode, box_code: boxCode })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.success) {
@@ -77,31 +97,7 @@ export default function LandingPage() {
         return;
       }
       setVerified(true);
-      try {
-        // Store for post-login claim if not yet claimed
-        if (!data.claimed && typeof window !== "undefined") {
-          const payload = { tag_code: tagCode, box_code: boxCode.toUpperCase(), ts: Date.now() };
-          sessionStorage.setItem("pendingActivation", JSON.stringify(payload));
-        }
-      } catch {
-        // ignore storage errors
-      }
-      // If already authenticated, go to setup immediately
-      try {
-        const supabase = getBrowserSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          router.push("/setup");
-        } else {
-          // Not logged in → start Google OAuth; AuthRedirect will claim and route to /setup
-          await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: { redirectTo: `${window.location.origin}/` }
-          });
-        }
-      } catch {
-        // ignore and leave user on the page
-      }
+      router.push(data?.data?.redirectTo || "/setup");
     } catch (e) {
       setVerified(false);
       setError(e instanceof Error ? e.message : "Verification failed");
@@ -113,12 +109,9 @@ export default function LandingPage() {
   const handleGoogleConnect = async () => {
     try {
       const supabase = getBrowserSupabaseClient();
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        },
-      });
+      try { if (boxCode) sessionStorage.setItem("ef.box_code", boxCode); } catch {}
+      const redirectTo = `${window.location.origin}/landing?id=${encodeURIComponent(tagCode)}&step=code`;
+      await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
     } catch {
       // surface errors via provider redirect; keep UI simple here
     }
@@ -155,7 +148,19 @@ export default function LandingPage() {
         {!showForm ? (
           <div className="w-full max-w-sm">
             <Button
-              onClick={() => setShowForm(true)}
+              onClick={async () => {
+                try {
+                  const supabase = getBrowserSupabaseClient();
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) {
+                    await handleGoogleConnect();
+                  } else {
+                    setShowForm(true);
+                  }
+                } catch {
+                  setShowForm(true);
+                }
+              }}
               className="w-full py-4 text-lg font-semibold rounded-2xl"
               style={{ backgroundColor: "#8f743c", color: "white" }}
             >
@@ -171,10 +176,10 @@ export default function LandingPage() {
             )}
             <input
               value={boxCode}
-              onChange={(e) => setBoxCode(e.target.value.toUpperCase())}
+              onChange={(e) => setBoxCode(e.target.value)}
               maxLength={6}
               placeholder="Enter 6-char BOX CODE"
-              className="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white text-center tracking-widest uppercase"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white text-center tracking-widest"
             />
             <Button
               onClick={handleVerify}

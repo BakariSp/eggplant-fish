@@ -26,7 +26,10 @@ export default function AuthRedirect() {
               if (tag_code && box_code) {
                 await fetch("/api/activation/verify", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json" },
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                  },
                   body: JSON.stringify({ tag_code, box_code })
                 });
               }
@@ -45,7 +48,7 @@ export default function AuthRedirect() {
               .select('tag_code')
               .eq('used_by', session.user.id)
               .eq('is_used', true)
-              .is('pet', null)
+              .is('pet_id', null)
               .limit(1);
             if (pending && pending.length > 0) {
               router.push('/setup');
