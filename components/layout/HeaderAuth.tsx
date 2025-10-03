@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useEffect, useState } from "react";
-import { getServerSupabaseClient } from "@/lib/supabase";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
 export default function HeaderAuth() {

@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Button from "@/components/ui/Button";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
-export default function LandingPage() {
+function LandingForm() {
   const searchParams = useSearchParams();
   const tagCode = useMemo(() => (searchParams.get("id") || "").trim(), [searchParams]);
   const step = useMemo(() => searchParams.get("step") || "", [searchParams]);
@@ -17,6 +17,23 @@ export default function LandingPage() {
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
+
+  // Client-side auth guard: if not logged in, redirect to /login with return URL
+  useEffect(() => {
+    (async () => {
+      if (!tagCode) return;
+      try {
+        const supabase = getBrowserSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          const returnTo = `${window.location.origin}/landing?id=${encodeURIComponent(tagCode)}&step=code`;
+          router.replace(`/login?redirect=${encodeURIComponent(returnTo)}`);
+        }
+      } catch {
+        // ignore; landing UI will still allow manual login
+      }
+    })();
+  }, [tagCode, router]);
 
   // If this tag_code already has a pet, redirect to dashboard posts using the tag_code
   useEffect(() => {
@@ -72,13 +89,13 @@ export default function LandingPage() {
       const supabase = getBrowserSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        // Save and go to Google; return to this page focused on code entry
+        // Save and go to /login, which will handle provider and redirect back
         try {
           sessionStorage.setItem("ef.box_code", boxCode);
           sessionStorage.setItem("pendingActivation", JSON.stringify({ tag_code: tagCode, box_code: boxCode.toUpperCase() }));
         } catch {}
         const redirectTo = `${window.location.origin}/landing?id=${encodeURIComponent(tagCode)}&step=code`;
-        await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+        router.push(`/login?redirect=${encodeURIComponent(redirectTo)}`);
         return;
       }
 
@@ -108,12 +125,11 @@ export default function LandingPage() {
 
   const handleGoogleConnect = async () => {
     try {
-      const supabase = getBrowserSupabaseClient();
       try { if (boxCode) sessionStorage.setItem("ef.box_code", boxCode); } catch {}
       const redirectTo = `${window.location.origin}/landing?id=${encodeURIComponent(tagCode)}&step=code`;
-      await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+      router.push(`/login?redirect=${encodeURIComponent(redirectTo)}`);
     } catch {
-      // surface errors via provider redirect; keep UI simple here
+      // ignore
     }
   };
 
@@ -150,13 +166,8 @@ export default function LandingPage() {
             <Button
               onClick={async () => {
                 try {
-                  const supabase = getBrowserSupabaseClient();
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session) {
-                    await handleGoogleConnect();
-                  } else {
-                    setShowForm(true);
-                  }
+                  const redirectTo = `${window.location.origin}/landing?id=${encodeURIComponent(tagCode)}&step=code`;
+                  router.push(`/login?redirect=${encodeURIComponent(redirectTo)}`);
                 } catch {
                   setShowForm(true);
                 }
@@ -203,5 +214,36 @@ export default function LandingPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>
+        <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+          <div className="mb-12 w-full max-w-md">
+            <div className="relative w-full max-w-[300px] mx-auto">
+              <Image
+                src="/icon/landing-page.svg"
+                alt="Pet NFC App Hero Illustration"
+                width={364}
+                height={358}
+                className="w-full h-auto"
+                priority
+              />
+            </div>
+          </div>
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-[#8f743c] mb-2">
+              Welcome to<br />EGGPLANT.FISH
+            </h1>
+            <p className="text-sm text-[#8f743c] opacity-80">Loading...</p>
+          </div>
+        </div>
+      </main>
+    }>
+      <LandingForm />
+    </Suspense>
   );
 }

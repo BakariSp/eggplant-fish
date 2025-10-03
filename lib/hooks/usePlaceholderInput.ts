@@ -19,7 +19,7 @@ export interface PlaceholderInputReturn {
   setValue: (value: string) => void;
   setIsPlaceholder: (isPlaceholder: boolean) => void;
   reset: () => void;
-  inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement>;
+  inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
 }
 
 /**

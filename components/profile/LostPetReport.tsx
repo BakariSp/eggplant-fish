@@ -40,39 +40,117 @@ export default function LostPetReport({ pet, owner, onToggleLostMode, onLostMode
     const newLostMode = !currentLostMode;
     
     try {
+      // Check if user is the owner
       const supabase = getBrowserSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
       
-      const updateData: any = {
-        lost_mode: newLostMode
-      };
-      
-      // If setting to lost (true), update lost_since to current timestamp
-      if (newLostMode) {
-        updateData.lost_since = new Date().toISOString();
-      }
-      
-      const { error } = await supabase
+      // Check if current user is the owner
+      const { data: petData } = await supabase
         .from("pets")
-        .update(updateData)
-        .eq("id", pet.id);
+        .select("owner_user_id")
+        .eq("id", pet.id)
+        .maybeSingle();
       
-      if (error) {
-        console.error("Failed to update lost mode:", error);
-        alert("Failed to update pet status. Please try again.");
+      const isOwner = !!currentUserId && !!petData?.owner_user_id && currentUserId === petData.owner_user_id;
+      
+      console.log('🔍 Auth check:', {
+        currentUserId,
+        petOwnerId: petData?.owner_user_id,
+        isOwner,
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token
+      });
+      
+      if (isOwner) {
+        // Owner: Use status API with authentication
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add authorization header if available
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+          console.log('🔑 Added auth header');
+        } else {
+          console.warn('⚠️ No access token available');
+        }
+        
+        console.log('📡 Making API call to /status with owner auth');
+        const response = await fetch(`/api/pets/${pet.id}/status`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            status: newLostMode ? 'lost' : 'found'
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API Error:', response.status, response.statusText, errorText);
+          throw new Error(`Failed to update status via API: ${response.status} ${errorText}`);
+        }
+        
+        const result = await response.json();
+        console.log('Owner status update:', result);
+        
       } else {
-        setCurrentLostMode(newLostMode);
-        console.log(`Pet ${pet.name} lost mode updated to: ${newLostMode}`);
-        
-        // Call the optional callback if provided
-        if (onToggleLostMode) {
-          onToggleLostMode();
+        // Non-owner: Use report API (no authentication required)
+        console.log('👤 Non-owner detected, using report API');
+        if (newLostMode) {
+          // Report as lost
+          console.log('📡 Making API call to /report-lost');
+          const response = await fetch(`/api/pets/${pet.id}/report-lost`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              reporter_name: session?.user?.user_metadata?.full_name || 'Anonymous',
+              reporter_email: session?.user?.email || undefined,
+              message: 'Reported via public profile'
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to report as lost');
+          }
+          
+        } else {
+          // Report as found
+          console.log('📡 Making API call to /report-found');
+          const response = await fetch(`/api/pets/${pet.id}/report-found`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              finder_name: session?.user?.user_metadata?.full_name || 'Anonymous',
+              finder_email: session?.user?.email || undefined,
+              message: 'Reported via public profile'
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to report as found');
+          }
         }
         
-        // Call the lost mode change callback
-        if (onLostModeChange) {
-          onLostModeChange(newLostMode);
-        }
+        console.log(`Non-owner ${newLostMode ? 'lost' : 'found'} report sent`);
       }
+      
+      // Update local state
+      setCurrentLostMode(newLostMode);
+      
+      // Call callbacks
+      if (onToggleLostMode) {
+        onToggleLostMode();
+      }
+      
+      if (onLostModeChange) {
+        onLostModeChange(newLostMode);
+      }
+      
     } catch (error) {
       console.error("Error updating lost mode:", error);
       alert("An error occurred. Please try again.");
@@ -133,11 +211,11 @@ export default function LostPetReport({ pet, owner, onToggleLostMode, onLostMode
           {isLost ? (
             <>
               <p className="text-lg mb-1">Please Report A Found To</p>
-              <p className="text-lg mb-1">{pet.name || "Pet"}'s Mom</p>
+              <p className="text-lg mb-1">{pet.name || "Pet"}&apos;s Mom</p>
             </>
           ) : (
             <>
-              <p className="text-lg mb-1">Please Contact {pet.name || "Pet"}'s Mom</p>
+              <p className="text-lg mb-1">Please Contact {pet.name || "Pet"}&apos;s Mom</p>
               <div className="text-lg mb-1">&nbsp;</div>
             </>
           )}

@@ -68,16 +68,24 @@ export default function PetHero({ pet, tags = [], gender, images, petId, onToggl
     setShowConfirmModal(false);
     // Optimistically show wrapper immediately
     onToggleLostFound?.();
-    // Persist to DB
+    // Persist to DB using new status API
     try {
       if (petId) {
-        const resp = await fetch(`/api/pets/${petId}/toggle-lost`, {
-          method: 'POST',
+        const resp = await fetch(`/api/pets/${petId}/status`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lost_mode: true }),
+          body: JSON.stringify({ 
+            status: 'lost',
+            last_seen_location: undefined, // Could be collected from user input
+            lost_message: undefined // Could be collected from user input
+          }),
         });
         if (!resp.ok) {
           console.error('Failed to update lost mode');
+          // Could show error to user here
+        } else {
+          const result = await resp.json();
+          console.log('Pet status updated:', result);
         }
       }
     } catch (e) {
@@ -123,7 +131,7 @@ export default function PetHero({ pet, tags = [], gender, images, petId, onToggl
     
     setIsDragging(false);
     setDragOffset(0);
-  }, [isDragging, dragOffset, handlePrev, handleNext]);
+  }, [isDragging, dragOffset, handlePrev, handleNext, gallery.length]);
 
   // Touch events
   const handleTouchStart = (e: React.TouchEvent) => {

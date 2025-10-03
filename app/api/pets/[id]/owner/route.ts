@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createDataAccess } from "@/lib/data";
 import { 
   uuidSchema, 
   validateInput, 
-  withErrorHandler, 
   createSuccessResponse,
   createNotFoundError
 } from "@/lib/validation";
@@ -34,4 +33,15 @@ async function handleGetOwner(
   return createSuccessResponse({ owner }, `Successfully retrieved owner information`);
 }
 
-export const GET = withErrorHandler(handleGetOwner);
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    return await handleGetOwner(request, context);
+  } catch (error) {
+    const path = request.url ? new URL(request.url).pathname : undefined;
+    const { createErrorResponse } = await import("@/lib/validation");
+    return createErrorResponse(error as Error, path);
+  }
+}

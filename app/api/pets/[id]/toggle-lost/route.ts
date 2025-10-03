@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { getAdminSupabaseClient } from "@/lib/supabase";
+import { notifyOwnerOnLost } from "@/lib/notifications";
 import {
   uuidSchema,
   validateInput,
-  withErrorHandler,
   createSuccessResponse,
   createInternalError,
   z,
@@ -41,10 +41,26 @@ async function handleToggleLost(
     throw createInternalError("Failed to toggle lost mode", { originalError: error });
   }
 
+  // Fire-and-forget notifications when enabling lost
+  if (lost_mode) {
+    notifyOwnerOnLost(validatedId as string).catch(() => {});
+  }
+
   return createSuccessResponse({ pet: data }, `Pet lost mode set to ${lost_mode}`);
 }
 
-export const POST = withErrorHandler(handleToggleLost);
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    return await handleToggleLost(request, context);
+  } catch (error) {
+    const path = request.url ? new URL(request.url).pathname : undefined;
+    const { createErrorResponse } = await import("@/lib/validation");
+    return createErrorResponse(error as Error, path);
+  }
+}
 
 
 

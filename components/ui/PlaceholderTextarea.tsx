@@ -38,7 +38,7 @@ const PlaceholderTextarea = forwardRef<HTMLTextAreaElement, PlaceholderTextareaP
     const combinedRef = (node: HTMLTextAreaElement) => {
       textareaRef.current = node;
       if (typeof ref === 'function') ref(node);
-      else if (ref) (ref as any).current = node;
+      else if (ref) (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
     };
 
     return (

@@ -3,11 +3,11 @@ import { AppMetrics } from "./metrics";
 
 // Error monitoring service interface
 export interface ErrorMonitoringService {
-  captureException(error: Error, context?: Record<string, any>): void;
-  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, any>): void;
+  captureException(error: Error, context?: Record<string, unknown>): void;
+  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, unknown>): void;
   setUser(user: { id: string; email?: string }): void;
   setTag(key: string, value: string): void;
-  setContext(name: string, context: Record<string, any>): void;
+  setContext(name: string, context: Record<string, unknown>): void;
 }
 
 // Sentry service implementation (placeholder)
@@ -24,24 +24,45 @@ class SentryService implements ErrorMonitoringService {
     }
   }
 
-  captureException(error: Error, context?: Record<string, any>): void {
+  captureException(error: Error, context?: Record<string, unknown>): void {
     if (!this.enabled) return;
     
     // TODO: Implement actual Sentry error capture
     // Sentry.captureException(error, { extra: context });
     
-    logger.error('Error captured by monitoring service', context, error);
+    const safeContext: import('./logger').LogContext | undefined = context
+      ? (Object.fromEntries(
+          Object.entries(context).map(([k, v]) => [
+            k,
+            typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+              ? v
+              : JSON.stringify(v),
+          ])
+        ) as import('./logger').LogContext)
+      : undefined;
+
+    logger.error('Error captured by monitoring service', safeContext, error);
     AppMetrics.recordError('monitored_exception');
   }
 
-  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, any>): void {
+  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, unknown>): void {
     if (!this.enabled) return;
     
     // TODO: Implement actual Sentry message capture
     // Sentry.captureMessage(message, level, { extra: context });
     
     const logLevel = level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'info';
-    logger[logLevel](`Monitored message: ${message}`, context);
+    const safeContext: import('./logger').LogContext | undefined = context
+      ? (Object.fromEntries(
+          Object.entries(context).map(([k, v]) => [
+            k,
+            typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+              ? v
+              : JSON.stringify(v),
+          ])
+        ) as import('./logger').LogContext)
+      : undefined;
+    logger[logLevel](`Monitored message: ${message}`, safeContext);
   }
 
   setUser(user: { id: string; email?: string }): void {
@@ -62,13 +83,13 @@ class SentryService implements ErrorMonitoringService {
     logger.debug('Tag set in monitoring service', { key, value });
   }
 
-  setContext(name: string, context: Record<string, any>): void {
+  setContext(name: string, context: Record<string, unknown>): void {
     if (!this.enabled) return;
     
     // TODO: Implement actual Sentry context
     // Sentry.setContext(name, context);
     
-    logger.debug('Context set in monitoring service', { name, context });
+    logger.debug('Context set in monitoring service', { name, context: JSON.stringify(context) });
   }
 }
 
@@ -84,19 +105,39 @@ class DataDogService implements ErrorMonitoringService {
     }
   }
 
-  captureException(error: Error, context?: Record<string, any>): void {
+  captureException(error: Error, context?: Record<string, unknown>): void {
     if (!this.enabled) return;
     
     // TODO: Implement actual DataDog error tracking
-    logger.error('Error captured by DataDog service', context, error);
+    const safeContext: import('./logger').LogContext | undefined = context
+      ? (Object.fromEntries(
+          Object.entries(context).map(([k, v]) => [
+            k,
+            typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+              ? v
+              : JSON.stringify(v),
+          ])
+        ) as import('./logger').LogContext)
+      : undefined;
+    logger.error('Error captured by DataDog service', safeContext, error);
     AppMetrics.recordError('datadog_exception');
   }
 
-  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, any>): void {
+  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, unknown>): void {
     if (!this.enabled) return;
     
     const logLevel = level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'info';
-    logger[logLevel](`DataDog message: ${message}`, context);
+    const safeContext2: import('./logger').LogContext | undefined = context
+      ? (Object.fromEntries(
+          Object.entries(context).map(([k, v]) => [
+            k,
+            typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+              ? v
+              : JSON.stringify(v),
+          ])
+        ) as import('./logger').LogContext)
+      : undefined;
+    logger[logLevel](`DataDog message: ${message}`, safeContext2);
   }
 
   setUser(user: { id: string; email?: string }): void {
@@ -109,9 +150,9 @@ class DataDogService implements ErrorMonitoringService {
     logger.debug('Tag set in DataDog service', { key, value });
   }
 
-  setContext(name: string, context: Record<string, any>): void {
+  setContext(name: string, context: Record<string, unknown>): void {
     if (!this.enabled) return;
-    logger.debug('Context set in DataDog service', { name, context });
+    logger.debug('Context set in DataDog service', { name, context: JSON.stringify(context) });
   }
 }
 
@@ -125,7 +166,7 @@ class MonitoringServiceManager {
     this.services.push(new DataDogService());
   }
 
-  captureException(error: Error, context?: Record<string, any>): void {
+  captureException(error: Error, context?: Record<string, unknown>): void {
     this.services.forEach(service => {
       try {
         service.captureException(error, context);
@@ -138,7 +179,7 @@ class MonitoringServiceManager {
     });
   }
 
-  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, any>): void {
+  captureMessage(message: string, level: 'info' | 'warning' | 'error', context?: Record<string, unknown>): void {
     this.services.forEach(service => {
       try {
         service.captureMessage(message, level, context);
@@ -178,7 +219,7 @@ class MonitoringServiceManager {
     });
   }
 
-  setContext(name: string, context: Record<string, any>): void {
+  setContext(name: string, context: Record<string, unknown>): void {
     this.services.forEach(service => {
       try {
         service.setContext(name, context);
@@ -311,4 +352,3 @@ HealthMonitor.registerCheck('memory', async () => {
   return true;
 });
 
-export { ErrorMonitoringService };

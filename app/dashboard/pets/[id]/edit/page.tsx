@@ -18,7 +18,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ id
       .select("id")
       .eq("id", id)
       .maybeSingle();
-    pet = fb.data as any;
+    pet = fb.data as { id: string } | null;
   }
 
   if (!pet) {

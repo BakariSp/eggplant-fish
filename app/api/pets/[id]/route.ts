@@ -1,12 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createDataAccess } from "@/lib/data";
 import { 
   uuidSchema, 
   validateInput, 
-  withErrorHandler, 
   createSuccessResponse,
-  createNotFoundError,
-  createInternalError
+  createNotFoundError
 } from "@/lib/validation";
 
 async function handleGetPet(
@@ -38,4 +36,15 @@ async function handleGetPet(
   return createSuccessResponse({ pet }, `Successfully retrieved pet: ${pet.name}`);
 }
 
-export const GET = withErrorHandler(handleGetPet);
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    return await handleGetPet(request, context);
+  } catch (error) {
+    const path = request.url ? new URL(request.url).pathname : undefined;
+    const { createErrorResponse } = await import("@/lib/validation");
+    return createErrorResponse(error as Error, path);
+  }
+}

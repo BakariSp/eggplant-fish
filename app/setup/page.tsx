@@ -122,27 +122,6 @@ export default function SetupPage() {
     }
   };
 
-  const calculateAgeFromBirthdate = (birthdate: string) => {
-    if (!birthdate) return { year: null, month: null };
-    
-    const birth = new Date(birthdate);
-    const now = new Date();
-    
-    let years = now.getFullYear() - birth.getFullYear();
-    let months = now.getMonth() - birth.getMonth();
-    
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-    
-    // If the pet is less than 1 month old, set to 1 month
-    if (years === 0 && months === 0) {
-      months = 1;
-    }
-    
-    return { year: years, month: months };
-  };
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>

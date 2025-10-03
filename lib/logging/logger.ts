@@ -18,7 +18,7 @@ export interface LogContext {
   url?: string;
   statusCode?: number;
   duration?: number;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 // Log entry interface
@@ -261,7 +261,7 @@ class Logger {
   // Business logic logging
   async logBusinessEvent(
     event: string,
-    details: Record<string, any>,
+    details: Record<string, unknown>,
     context?: LogContext
   ) {
     const message = `Business Event: ${event}`;
@@ -269,7 +269,7 @@ class Logger {
     await this.log(LogLevel.INFO, message, {
       ...context,
       event,
-      details,
+      details: JSON.stringify(details),
       type: 'business_event',
     });
   }

@@ -52,7 +52,7 @@ export interface PetWithDetails extends Pet {
   traits?: string[];
   year?: number;
   month?: number;
-  contact_prefs?: any;
+  contact_prefs?: unknown;
 }
 
 /**
@@ -69,7 +69,7 @@ export class PetsDataAccess {
     try {
       const { data: pets, error } = await this.supabase
         .from("pets")
-        .select("id, name, created_at")
+        .select("id, name, created_at, owner_user_id")
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -92,7 +92,7 @@ export class PetsDataAccess {
     try {
       const { data: pet, error } = await this.supabase
         .from("pets")
-        .select("id, name")
+        .select("id, name, created_at, owner_user_id")
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
@@ -163,15 +163,27 @@ export class PetsDataAccess {
         .maybeSingle();
 
       // Format the response to match the expected structure
+      type DbPet = Pet & {
+        microchip_id?: string;
+        neuter_status?: boolean | null;
+        gender?: string;
+        traits?: string[];
+        vaccinated?: string[];
+        allergy_note?: string[];
+        year?: number;
+        month?: number;
+      };
+      const p = (pet ?? {}) as DbPet;
       const formattedPet: PetWithDetails = {
-        ...pet,
+        ...p,
+        id: p.id || id,
         pet_id: id, // Add pet_id for compatibility with existing components
-        vaccinations: Array.isArray(pet.vaccinated) ? pet.vaccinated : [], // Use vaccinated array from database
-        allergies: Array.isArray(pet.allergy_note) ? pet.allergy_note : [], // Use allergy_note array from database
-        microchip_id: pet.microchip_id || undefined,
-        neuter_status: pet.neuter_status,
-        gender: pet.gender || "unknown",
-        traits: Array.isArray(pet.traits) ? pet.traits : [],
+        vaccinations: Array.isArray(p.vaccinated) ? p.vaccinated : [], // Use vaccinated array from database
+        allergies: Array.isArray(p.allergy_note) ? p.allergy_note : [], // Use allergy_note array from database
+        microchip_id: p.microchip_id || undefined,
+        neuter_status: p.neuter_status,
+        gender: p.gender || "unknown",
+        traits: Array.isArray(p.traits) ? p.traits : [],
         contact_prefs: contactPrefs
       };
 

@@ -21,8 +21,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       .select("*")
       .eq("id", slug)
       .maybeSingle();
-    pet = fb.data as any;
-    error = fb.error as any;
+    pet = fb.data as typeof pet;
+    error = fb.error as typeof error;
   }
   
   console.log("Public profile - Pet data loaded:", { 

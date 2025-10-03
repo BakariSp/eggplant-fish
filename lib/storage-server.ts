@@ -1,6 +1,5 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "./supabase";
-import { v4 as uuidv4 } from "uuid";
-import { STORAGE_BUCKETS, ImageUploadOptions, ImageUploadResult, StorageBucket } from "./storage";
+import { ImageUploadOptions, ImageUploadResult, StorageBucket } from "./storage";
 
 // Server-side image upload function
 export async function uploadImageServer(
@@ -81,7 +80,7 @@ export async function listFilesServer(
   bucket: StorageBucket,
   folder?: string,
   limit = 100
-): Promise<{ success: boolean; files?: any[]; error?: string }> {
+): Promise<{ success: boolean; files?: Array<{ name: string; id: string; updated_at: string; created_at: string; last_accessed_at: string; metadata: Record<string, unknown> }>; error?: string }> {
   try {
     const supabase = await getServerSupabaseClient();
     

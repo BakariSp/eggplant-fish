@@ -119,7 +119,7 @@ export default function EditProfileClient({ petId }: Props) {
           
           // Filter out empty/null avatar URLs when loading
           const validAvatarUrls = petData.avatar_url 
-            ? petData.avatar_url.filter((url: any) => url && url.trim() !== "")
+            ? petData.avatar_url.filter((url: string) => url && url.trim() !== "")
             : [];
 
           const profile: Profile = {
@@ -153,7 +153,7 @@ export default function EditProfileClient({ petId }: Props) {
           // Load existing profile photos from avatar_url array
           if (petData.avatar_url && Array.isArray(petData.avatar_url)) {
             // Filter out empty strings and null values
-            const validUrls = petData.avatar_url.filter((url: any) => url && url.trim() !== "");
+            const validUrls = petData.avatar_url.filter((url: string) => url && url.trim() !== "");
             setUploadedImages(validUrls);
           }
         }
@@ -163,7 +163,7 @@ export default function EditProfileClient({ petId }: Props) {
         
         if (contactData) {
           const owner: Owner = {
-            name: (contactData as any)?.owner_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
+            name: (contactData as { owner_name?: string })?.owner_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
             phone: contactData.phone || "",
             email: contactData.email || user?.email || "",
             photo_url: user?.user_metadata?.avatar_url || user?.user_metadata?.picture
@@ -197,7 +197,7 @@ export default function EditProfileClient({ petId }: Props) {
 
     loadPetData();
     return () => { mounted = false; };
-  }, [petId]);
+  }, [petId, user, authLoading, DEFAULT_TAGS_MEMO, DEFAULT_ALLERGIES_MEMO, VACCINE_PLACEHOLDERS]);
 
   // Handle image upload
   const handleImageUpload = (result: { success: boolean; url?: string; path?: string; error?: string }) => {
@@ -221,7 +221,7 @@ export default function EditProfileClient({ petId }: Props) {
 
   
 
-  const formatAge = (profile?: any): { years: string; months: string } => {
+  const formatAge = (profile?: Profile): { years: string; months: string } => {
     if (!profile?.year && !profile?.month) return { years: "2", months: "3" }; // Default placeholder
     
     const result = { 
@@ -295,7 +295,7 @@ export default function EditProfileClient({ petId }: Props) {
       });
 
       // Update existing pet profile
-      const petUpdates: any = {};
+      const petUpdates: Record<string, string | number | boolean | string[] | null> = {};
       
       // Handle pet name - save if different from current value
       if (petName !== profile?.name) {
@@ -350,7 +350,7 @@ export default function EditProfileClient({ petId }: Props) {
       }
       
       // Handle age - save year and month directly
-      const currentAge = formatAge(profile);
+      const currentAge = formatAge(profile || undefined);
       console.log("🔢 Age comparison:", {
         ageYears,
         ageMonths,
@@ -424,7 +424,7 @@ export default function EditProfileClient({ petId }: Props) {
       }
 
       // Update contact preferences - only update if not placeholder values
-      const contactUpdates: any = {
+      const contactUpdates: Record<string, string | boolean | null> = {
         pet_id: petId,
         phone: (phone && phone !== "(555) 123-4567") ? phone : null,
         email: (email && email !== "john.smith@gmail.com") ? email : null,
@@ -434,7 +434,7 @@ export default function EditProfileClient({ petId }: Props) {
       };
       // Also persist owner's display name into contact_prefs.owner_name if available
       if (ownerName && ownerName !== "John Smith") {
-        (contactUpdates as any).owner_name = ownerName;
+        contactUpdates.owner_name = ownerName;
       }
       
       console.log("🔄 Updating contact preferences:", contactUpdates);
@@ -472,7 +472,7 @@ export default function EditProfileClient({ petId }: Props) {
       console.log("Pet data after save:", petData);
       
       // Navigate back to current pet's posts page after saving
-      const codeOrId = (petData as any)?.tag_code || petId;
+      const codeOrId = (petData as { tag_code?: string })?.tag_code || petId;
       router.push(`/dashboard/pets/${codeOrId}/posts`);
     } catch (error) {
       console.error("Failed to save profile:", error);
@@ -516,7 +516,7 @@ export default function EditProfileClient({ petId }: Props) {
         {/* Owner's Name */}
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
-            Owner's Name
+            Owner&apos;s Name
           </label>
           <PlaceholderInput
             ref={ownerNameRef}
@@ -553,7 +553,7 @@ export default function EditProfileClient({ petId }: Props) {
               <PlaceholderSelect
                 ref={ageYearRef}
                 placeholder="2y"
-                defaultValue={formatAge(profile).years}
+                defaultValue={formatAge(profile || undefined).years}
                 options={Array.from({ length: 31 }, (_, i) => ({
                   value: i.toString(),
                   label: `${i}y`
@@ -563,7 +563,7 @@ export default function EditProfileClient({ petId }: Props) {
               <PlaceholderSelect
                 ref={ageMonthRef}
                 placeholder="3m"
-                defaultValue={formatAge(profile).months}
+                defaultValue={formatAge(profile || undefined).months}
                 options={Array.from({ length: 12 }, (_, i) => ({
                   value: i.toString(),
                   label: `${i}m`
@@ -729,7 +729,7 @@ export default function EditProfileClient({ petId }: Props) {
         {/* Owner's Contact Information */}
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
-            Owner's Contact Information
+            Owner&apos;s Contact Information
           </label>
           <div className="bg-white rounded-xl p-6">
             <div className="flex justify-center mb-4">

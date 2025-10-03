@@ -47,7 +47,7 @@ export default function RegisterPage() {
       setSuccess("");
 
       if (password !== confirmPassword) {
-        setError("Passwords don't match");
+        setError("Passwords don&apos;t match");
         return;
       }
 
@@ -101,7 +101,7 @@ export default function RegisterPage() {
               Create your<br />account now
             </h1>
             <p className="text-[#8f743c] opacity-80">
-              Start your journey with us, and let's sharing<br />
+              Start your journey with us, and let&apos;s sharing<br />
               your pet story through our platform!
             </p>
           </div>

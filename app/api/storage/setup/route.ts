@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabaseClient, getAdminSupabaseClient } from "../../../../lib/supabase";
+import { getServerSupabaseClient } from "../../../../lib/supabase";
 import { STORAGE_BUCKETS } from "../../../../lib/storage";
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const supabase = await getServerSupabaseClient();
     

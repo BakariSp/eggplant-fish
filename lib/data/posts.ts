@@ -66,7 +66,7 @@ export class PostsDataAccess {
       const formattedPosts: PostWithExtras[] = posts?.map(post => ({
         ...post,
         pet_id: petId, // Add pet_id for compatibility
-        title: (post as any).title ?? "Untitled Post",
+        title: (post as { title?: string }).title ?? "Untitled Post",
         author_name: "Pet Owner",
         tags: []
       })) || [];

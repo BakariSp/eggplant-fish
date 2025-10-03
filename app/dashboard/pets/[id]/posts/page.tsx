@@ -1,7 +1,6 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase";
 import PostsLostClient from "./PostsLostClient";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 
 // Force dynamic rendering to prevent caching
 export const dynamic = 'force-dynamic';
@@ -23,8 +22,8 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
       .select("*")
       .eq("id", id)
       .maybeSingle();
-    pet = fb.data as any;
-    error = fb.error as any;
+    pet = fb.data as typeof pet;
+    error = fb.error as typeof error;
   }
   
   console.log("Posts page - Pet data loaded:", { 
@@ -79,7 +78,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
         initialCanEdit = true;
       }
     }
-  } catch (e) {
+  } catch {
     // ignore; client will re-check
   }
 

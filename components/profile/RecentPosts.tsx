@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
 import SectionHeader from "@/components/ui/SectionHeader";
 import PostComposer from "@/components/posts/PostComposer";
@@ -151,7 +150,7 @@ export default function RecentPosts({ posts, onCreatePost, petId, onPostCreated 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                 <div className="absolute bottom-1 left-2 right-2 text-white">
                   <div className="text-[9px] opacity-80 mb-1">2025/01/10</div>
-                  <div className="font-bold text-xs mb-1">It's quiet here…</div>
+                  <div className="font-bold text-xs mb-1">It&apos;s quiet here…</div>
                   <div className="text-[9px] opacity-85 line-clamp-3 leading-tight">Start your first post!</div>
                 </div>
               </div>

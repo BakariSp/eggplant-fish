@@ -101,7 +101,7 @@ async function main() {
     let tag = generateCode(tagLen, ALPHABETS.SAFE32);
     let box = generateCode(boxLen, ALPHABETS.UPPER36);
     if (box === tag) {
-      box = generateCode(length);
+      box = generateCode(boxLen, ALPHABETS.UPPER36);
     }
 
     // Avoid duplicates within current run
@@ -111,7 +111,7 @@ async function main() {
 
     const { error } = await supabase
       .from("activation_codes")
-      .insert([{ tag_code: tag, box_code: box }], { returning: "minimal" });
+      .insert([{ tag_code: tag, box_code: box }]);
 
     if (error) {
       // If unique violation, retry with new codes; otherwise, abort

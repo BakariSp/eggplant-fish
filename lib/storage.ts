@@ -168,7 +168,7 @@ export async function listFiles(
   bucket: StorageBucket,
   folder?: string,
   limit = 100
-): Promise<{ success: boolean; files?: any[]; error?: string }> {
+): Promise<{ success: boolean; files?: unknown[]; error?: string }> {
   try {
     const supabase = getBrowserSupabaseClient();
     

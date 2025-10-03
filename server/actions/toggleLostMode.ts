@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { getServerSupabaseClient } from "@/lib/supabase";
+import { notifyOwnerOnLost } from "@/lib/notifications";
 
 const Input = z.object({
   petId: z.string().uuid(),
@@ -24,6 +25,10 @@ export async function toggleLostMode(raw: unknown) {
   }
   const { error } = await supabase.from("pets").update(updates).eq("id", petId);
   if (error) return { ok: false as const, reason: error.message };
+  if (lostMode) {
+    // Fire-and-forget notification
+    notifyOwnerOnLost(petId).catch(() => {});
+  }
   return { ok: true as const };
 }
 

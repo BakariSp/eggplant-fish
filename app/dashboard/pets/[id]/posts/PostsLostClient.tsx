@@ -85,7 +85,7 @@ export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, isPubli
 			}
 		})();
 		return () => { cancelled = true; };
-	}, [ownerUserId, ownerAuthEmail, slug]);
+	}, [ownerUserId, ownerAuthEmail, slug, pathname, router]);
 
 	const handleToggleLostFound = () => {
 		// 主动打开 Lost/Found 面板并置为 Lost
@@ -115,7 +115,12 @@ export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, isPubli
 				onLostModeChange={handleLostModeChange}
 			/>
 			<PetProfileSection
-				pet={updatedPet}
+				pet={{
+					...updatedPet,
+					gender: (updatedPet.gender as "male" | "female" | "unknown") || "unknown",
+					vaccinated: Array.isArray(updatedPet.vaccinated) ? updatedPet.vaccinated : [],
+					allergy_note: Array.isArray(updatedPet.allergy_note) ? updatedPet.allergy_note : []
+				}}
 				onToggleLostFound={handleToggleLostFound}
 				showLostFound={showLostFound}
 				isPublic={!canEdit}

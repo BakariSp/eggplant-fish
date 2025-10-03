@@ -20,7 +20,7 @@ interface Pet {
 export default function PetsDashboard() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<{ user_metadata?: { avatar_url?: string; picture?: string; full_name?: string }; email?: string } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -216,7 +216,7 @@ export default function PetsDashboard() {
                       {(() => {
                         const years = pet.year || 0;
                         const months = pet.month || 0;
-                        let ageParts = [];
+                        const ageParts = [];
                         if (years > 0) ageParts.push(`${years}y`);
                         if (months > 0) ageParts.push(`${months}m`);
                         return ageParts.join(" ") || "0m";

@@ -2,19 +2,37 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
-export default function LoginPage() {
+function LoginForm() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = useMemo(() => (searchParams.get('redirect') || '').trim(), [searchParams]);
+
+  const getAbsoluteRedirect = (): string => {
+    try {
+      if (!redirectParam) return `${window.location.origin}/`;
+      // If relative path, make it absolute
+      if (redirectParam.startsWith('/')) {
+        return `${window.location.origin}${redirectParam}`;
+      }
+      const url = new URL(redirectParam);
+      // Only allow same-origin absolute URLs
+      if (url.origin === window.location.origin) return url.toString();
+      return `${window.location.origin}/`;
+    } catch {
+      return `${window.location.origin}/`;
+    }
+  };
 
   const handleGoogleLogin = async () => {
     try {
@@ -25,7 +43,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: getAbsoluteRedirect()
         }
       });
 
@@ -53,6 +71,10 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
+        if (redirectParam) {
+          router.push(redirectParam);
+          return;
+        }
         // Check if user has pets before redirecting
         const { data: pets } = await supabase
           .from("pets")
@@ -99,7 +121,7 @@ export default function LoginPage() {
               Login to your<br />account
             </h1>
             <p className="text-[#8f743c] opacity-80">
-              Start your journey with us, and let's sharing<br />
+              Start your journey with us, and let&apos;s sharing<br />
               your pet story through our platform!
             </p>
           </div>
@@ -217,7 +239,7 @@ export default function LoginPage() {
 
           {/* Sign Up Link */}
           <div className="text-center text-sm text-gray-600">
-            Doesn't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/register" className="text-[#EC5914] font-medium">
               create one
             </Link>
@@ -225,5 +247,17 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen relative flex items-center justify-center" style={{ backgroundColor: "#FCEFDC" }}>
+        <div className="text-[#8f743c]">Loading...</div>
+      </main>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

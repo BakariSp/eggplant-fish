@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
-export default function VerifyPage() {
+function VerifyForm() {
   const [activationCode, setActivationCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -191,5 +190,34 @@ export default function VerifyPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen relative overflow-hidden">
+        <div className="absolute inset-0" style={{
+          background: "linear-gradient(180deg, #8B4513 0%, #A0522D 100%)"
+        }}>
+          <div 
+            className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-20"
+            style={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+          />
+        </div>
+        <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-6">
+          <div className="text-center">
+            <h1 
+              className="text-4xl font-bold mb-4" 
+              style={{ color: "#FCEFDC" }}
+            >
+              Loading...
+            </h1>
+          </div>
+        </div>
+      </main>
+    }>
+      <VerifyForm />
+    </Suspense>
   );
 }

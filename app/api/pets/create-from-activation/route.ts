@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSupabaseClient, getServerSupabaseClient } from "@/lib/supabase";
 
-function generateSlug(name: string): string {
-  const base = name.toLowerCase()
-    .replace(/[^a-z0-9]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  const suffix = Math.random().toString(36).substring(2, 8);
-  return `${base}-${suffix}`;
-}
 
 function calculateAgeFromBirthdate(birthdate?: string | null): { year: number | null; month: number | null } {
   if (!birthdate) return { year: null, month: null };

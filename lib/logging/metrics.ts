@@ -43,7 +43,7 @@ export class MetricsCollector {
       metric: name,
       value: newValue,
       increment: value,
-      tags,
+      tags: tags ? JSON.stringify(tags) : undefined,
       type: 'metric',
     });
   }
@@ -60,7 +60,7 @@ export class MetricsCollector {
     logger.debug(`Gauge set: ${name} = ${value}`, {
       metric: name,
       value,
-      tags,
+      tags: tags ? JSON.stringify(tags) : undefined,
       type: 'metric',
     });
   }
@@ -72,7 +72,7 @@ export class MetricsCollector {
     logger.debug(`Histogram recorded: ${name} = ${value}`, {
       metric: name,
       value,
-      tags,
+      tags: tags ? JSON.stringify(tags) : undefined,
       type: 'metric',
     });
   }
@@ -84,7 +84,7 @@ export class MetricsCollector {
     logger.debug(`Timer recorded: ${name} = ${duration}ms`, {
       metric: name,
       duration,
-      tags,
+      tags: tags ? JSON.stringify(tags) : undefined,
       type: 'metric',
     });
   }
@@ -284,10 +284,10 @@ export class MetricsReporter {
         tags: metric.tags,
       });
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, unknown[]>);
 
     await logger.info('Metrics Summary', {
-      summary,
+      summary: JSON.stringify(summary),
       totalMetrics: allMetrics.length,
       type: 'metrics_summary',
     });

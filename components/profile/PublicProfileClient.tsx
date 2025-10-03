@@ -79,7 +79,12 @@ export default function PublicProfileClient({ pet, posts, ownerInfo }: Props) {
         onLostModeChange={handleLostModeChange}
       />
       <PetProfileSection 
-        pet={updatedPet} 
+        pet={{
+          ...updatedPet,
+          gender: (updatedPet.gender as "male" | "female" | "unknown") || "unknown",
+          vaccinated: Array.isArray(updatedPet.vaccinated) ? updatedPet.vaccinated : [],
+          allergy_note: Array.isArray(updatedPet.allergy_note) ? updatedPet.allergy_note : []
+        }} 
         onToggleLostFound={handleToggleLostFound}
         showLostFound={showLostFound}
       />

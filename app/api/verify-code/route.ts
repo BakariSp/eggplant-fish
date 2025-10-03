@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { getServerSupabaseClient } from "@/lib/supabase";
 import { 
   verificationCodeSchema, 
   validateInput, 
-  withErrorHandler, 
-  createSuccessResponse,
-  createBadRequestError,
-  createInternalError
+  createSuccessResponse
 } from "@/lib/validation";
 
 async function handleVerifyCode(request: NextRequest) {
@@ -153,4 +149,12 @@ async function handleVerifyCode(request: NextRequest) {
     }, "Verification code validated successfully");
 }
 
-export const POST = withErrorHandler(handleVerifyCode);
+export async function POST(request: NextRequest) {
+  try {
+    return await handleVerifyCode(request);
+  } catch (error) {
+    const path = request.url ? new URL(request.url).pathname : undefined;
+    const { createErrorResponse } = await import("@/lib/validation");
+    return createErrorResponse(error as Error, path);
+  }
+}

@@ -202,7 +202,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
   };
 
   // Post Library点击处理函数
-  const handleLibraryPostClick = (post: any) => {
+  const handleLibraryPostClick = (post: MockPost) => {
     setClickSource('library'); // 设置来源为Post Library
     setSelectedPost(post);
     // 在allImagePosts中找到索引
@@ -350,7 +350,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-  }, [isDragging, moveDrag]);
+  }, [isDragging, moveDrag, endDrag]);
 
   // Reset expand state when switching image
   useEffect(() => {
@@ -382,7 +382,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
     };
     const id = requestAnimationFrame(measure);
     return () => cancelAnimationFrame(id);
-  }, [showPopup, viewerIndex, isExpanded, clickSource, previewPosts, allImagePosts]);
+  }, [showPopup, viewerIndex, isExpanded, clickSource, previewPosts, allImagePosts, getPopupDataSource]);
 
   // Expanded panel: dynamic height with 60% cap of image area
   useEffect(() => {
@@ -845,9 +845,9 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
                       zIndex: 15,
                       height: isExpanded ? (panelHeightPx !== null ? `${panelHeightPx}px` : undefined) : undefined,
                       overflowY: isExpanded && canExpand ? (panelOverflowAuto ? 'auto' : 'hidden') : undefined,
-                      WebkitOverflowScrolling: isExpanded && canExpand ? ('touch' as any) : undefined,
-                      overscrollBehavior: isExpanded && canExpand ? ('contain' as any) : undefined,
-                      touchAction: isExpanded && canExpand ? ('pan-y' as any) : undefined,
+                      WebkitOverflowScrolling: isExpanded && canExpand ? 'touch' : undefined,
+                      overscrollBehavior: isExpanded && canExpand ? 'contain' : undefined,
+                      touchAction: isExpanded && canExpand ? 'pan-y' : undefined,
                       cursor: !isExpanded && canExpand ? 'pointer' : 'default'
                     }}
                   >

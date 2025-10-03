@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { ZodError, ZodIssue } from "zod";
 import { logger, AppMetrics } from "../logging";
 
@@ -19,7 +19,7 @@ export interface ApiError {
   error: string;
   type: ErrorType;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
   timestamp: string;
   path?: string;
 }
@@ -28,13 +28,13 @@ export interface ApiError {
 export class AppError extends Error {
   public readonly type: ErrorType;
   public readonly statusCode: number;
-  public readonly details?: any;
+  public readonly details?: Record<string, unknown>;
 
   constructor(
     type: ErrorType,
     message: string,
     statusCode: number,
-    details?: any
+    details?: Record<string, unknown>
   ) {
     super(message);
     this.type = type;
@@ -50,7 +50,7 @@ export class AppError extends Error {
 }
 
 // Predefined error creators
-export const createValidationError = (message: string, details?: any) =>
+export const createValidationError = (message: string, details?: Record<string, unknown>) =>
   new AppError(ErrorType.VALIDATION_ERROR, message, 400, details);
 
 export const createNotFoundError = (message: string = "Resource not found") =>
@@ -62,20 +62,20 @@ export const createUnauthorizedError = (message: string = "Unauthorized access")
 export const createForbiddenError = (message: string = "Forbidden access") =>
   new AppError(ErrorType.FORBIDDEN, message, 403);
 
-export const createConflictError = (message: string, details?: any) =>
+export const createConflictError = (message: string, details?: Record<string, unknown>) =>
   new AppError(ErrorType.CONFLICT, message, 409, details);
 
-export const createInternalError = (message: string = "Internal server error", details?: any) =>
+export const createInternalError = (message: string = "Internal server error", details?: Record<string, unknown>) =>
   new AppError(ErrorType.INTERNAL_ERROR, message, 500, details);
 
-export const createBadRequestError = (message: string, details?: any) =>
+export const createBadRequestError = (message: string, details?: Record<string, unknown>) =>
   new AppError(ErrorType.BAD_REQUEST, message, 400, details);
 
 export const createTooManyRequestsError = (message: string = "Too many requests") =>
   new AppError(ErrorType.TOO_MANY_REQUESTS, message, 429);
 
 // Format Zod validation errors
-export function formatZodError(error: ZodError): { message: string; details: any } {
+export function formatZodError(error: ZodError): { message: string; details: Record<string, unknown> } {
   const fieldErrors: Record<string, string[]> = {};
   
   error.issues.forEach((issue: ZodIssue) => {
@@ -113,7 +113,7 @@ export function createErrorResponse(
       type: error.type,
       statusCode: error.statusCode,
       path,
-      details: error.details,
+      details: error.details ? JSON.stringify(error.details) : undefined,
     }, error);
 
     // Record error metrics
@@ -137,8 +137,8 @@ export function createErrorResponse(
     // Log validation errors
     logger.warn(`Validation Error: ${message}`, {
       path,
-      details,
-      issues: error.issues,
+      details: JSON.stringify(details),
+      issues: JSON.stringify(error.issues),
     });
 
     // Record validation error metrics
@@ -178,7 +178,7 @@ export function createErrorResponse(
 }
 
 // Success response helper
-export interface ApiSuccess<T = any> {
+export interface ApiSuccess<T = unknown> {
   success: true;
   data: T;
   message?: string;
@@ -208,19 +208,19 @@ export function createSuccessResponse<T>(
 }
 
 // Validation helper function
-export function validateInput<T>(schema: any, input: unknown): T {
+export function validateInput<T>(schema: { safeParse: (input: unknown) => { success: boolean; data?: T; error?: unknown } }, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
     throw result.error;
   }
-  return result.data;
+  return result.data!;
 }
 
 // Async error handler wrapper for API routes
-export function withErrorHandler(
-  handler: (req: any, context?: any) => Promise<NextResponse>
+export function withErrorHandler<T = unknown>(
+  handler: (req: NextRequest, context?: T) => Promise<NextResponse>
 ) {
-  return async (req: any, context?: any): Promise<NextResponse> => {
+  return async (req: NextRequest, context?: T): Promise<NextResponse> => {
     try {
       return await handler(req, context);
     } catch (error) {

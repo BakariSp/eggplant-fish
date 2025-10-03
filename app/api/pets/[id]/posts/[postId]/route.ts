@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getAdminSupabaseClient } from '@/lib/supabase';
 import { 
   uuidSchema, 
   validateInput, 
-  withErrorHandler, 
   createSuccessResponse,
   createInternalError
 } from '@/lib/validation';
@@ -39,4 +38,15 @@ async function handleDeletePost(
   );
 }
 
-export const DELETE = withErrorHandler(handleDeletePost);
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string; postId: string }> }
+) {
+  try {
+    return await handleDeletePost(request, context);
+  } catch (error) {
+    const path = request.url ? new URL(request.url).pathname : undefined;
+    const { createErrorResponse } = await import('@/lib/validation');
+    return createErrorResponse(error as Error, path);
+  }
+}

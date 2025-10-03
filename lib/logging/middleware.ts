@@ -83,7 +83,7 @@ export async function logRequestComplete(
 }
 
 // Middleware wrapper for API routes
-export function withLogging<T extends any[]>(
+export function withLogging<T extends unknown[]>(
   handler: (request: NextRequest, ...args: T) => Promise<NextResponse>
 ) {
   return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
@@ -187,7 +187,7 @@ export class PerformanceMonitor {
 }
 
 // Database operation logging decorator
-export function withDatabaseLogging<T extends any[], R>(
+export function withDatabaseLogging<T extends unknown[], R>(
   operation: string,
   table: string,
   fn: (...args: T) => Promise<R>
@@ -228,7 +228,7 @@ export function withDatabaseLogging<T extends any[], R>(
 export async function logHealthCheck(
   service: string,
   status: 'healthy' | 'unhealthy' | 'degraded',
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ) {
   const level = status === 'healthy' ? 'info' : 
                status === 'degraded' ? 'warn' : 'error';
@@ -236,7 +236,7 @@ export async function logHealthCheck(
   await logger[level](`Health Check: ${service} - ${status}`, {
     service,
     status,
-    details,
+    details: details ? JSON.stringify(details) : undefined,
     type: 'health_check',
   });
 }
@@ -245,7 +245,7 @@ export async function logHealthCheck(
 export async function logUserActivity(
   userId: string,
   activity: string,
-  details?: Record<string, any>,
+  details?: Record<string, unknown>,
   context?: LogContext
 ) {
   await logger.logBusinessEvent(`User Activity: ${activity}`, {
