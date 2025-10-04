@@ -91,7 +91,7 @@ export default function RecentPosts({ posts, onCreatePost, petId, onPostCreated 
             }
             style={{ 
               background: "#2a2a2a",
-              left: index === 0 ? "25%" : index === 1 ? "calc(50% + 30px)" : "75%",
+              left: index === 0 ? "20%" : index === 1 ? "50%" : "80%",
               top: index === 2 ? "110px" : "70px",
               transform: `translateX(-50%) ${index === 0 ? "rotate(-18deg)" : index === 2 ? "rotate(18deg)" : "scale(1.05)"}`
             }}
@@ -138,7 +138,7 @@ export default function RecentPosts({ posts, onCreatePost, petId, onPostCreated 
               }
               style={{ 
                 background: "#2a2a2a",
-                left: index === 0 ? "25%" : index === 1 ? "calc(50% + 30px)" : "75%",
+                left: index === 0 ? "20%" : index === 1 ? "50%" : "80%",
                 top: index === 2 ? "110px" : "70px",
                 transform: `translateX(-50%) ${index === 0 ? "rotate(-18deg)" : index === 2 ? "rotate(18deg)" : "scale(1.05)"}`
               }}

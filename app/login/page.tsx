@@ -19,6 +19,11 @@ function LoginForm() {
   const redirectParam = useMemo(() => (searchParams.get('redirect') || '').trim(), [searchParams]);
 
   const getAbsoluteRedirect = (): string => {
+    // Check if we're on the client side
+    if (typeof window === 'undefined') {
+      return '/'; // Fallback for server-side rendering
+    }
+    
     try {
       if (!redirectParam) return `${window.location.origin}/`;
       // If relative path, make it absolute
@@ -253,8 +258,23 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen relative flex items-center justify-center" style={{ backgroundColor: "#FCEFDC" }}>
-        <div className="text-[#8f743c]">Loading...</div>
+      <main className="min-h-screen relative" style={{ backgroundColor: "#FCEFDC" }}>
+        <div className="relative z-10 flex flex-col justify-center px-6 py-12 min-h-[calc(100vh-80px)]">
+          <div className="w-full max-w-sm mx-auto space-y-8">
+            <div>
+              <h1 className="text-3xl font-bold text-[#8f743c] mb-2">
+                Login to your<br />account
+              </h1>
+              <p className="text-[#8f743c] opacity-80">
+                Start your journey with us, and let&apos;s sharing<br />
+                your pet story through our platform!
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[#8f743c] opacity-60">Loading...</p>
+            </div>
+          </div>
+        </div>
       </main>
     }>
       <LoginForm />

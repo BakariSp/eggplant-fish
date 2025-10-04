@@ -652,7 +652,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
         </div>
 
         {/* Posts Section with SVG background - starts in middle of cards */}
-        <div className="relative -mx-6">
+        <div className="relative overflow-hidden">
           {/* SVG Background */}
           <div
             aria-hidden
@@ -662,8 +662,6 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
               backgroundSize: "cover",
               backgroundPosition: "center top",
               backgroundRepeat: "no-repeat",
-              marginLeft: "-32px",
-              marginRight: "-32px",
               minHeight: "500px"
             }}
           />
@@ -674,8 +672,6 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
             className="absolute inset-0 rounded-t-[48px]"
             style={{ 
               // background: "linear-gradient(180deg, #EC5914 0%, #D4490F 100%)",
-              marginLeft: "-32px",
-              marginRight: "-32px",
               zIndex: -1
             }}
           />
