@@ -25,7 +25,7 @@ export default function PostLibrary({ posts, onPostClick, isPublic = false }: Pr
   };
 
   return (
-    <section className="relative z-10 px-6 pb-8" style={{ marginTop: '104px' }}>
+    <section className="relative z-10 px-6 pb-8 overflow-x-hidden" style={{ marginTop: '104px' }}>
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-white">Post Library</h2>
       </div>

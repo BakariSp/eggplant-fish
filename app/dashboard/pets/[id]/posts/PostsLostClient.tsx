@@ -107,7 +107,7 @@ export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, isPubli
 	};
 
 	return (
-		<div className="px-3 sm:px-4 pt-1 pb-6 max-w-[760px] mx-auto">
+		<div className="px-3 sm:px-4 pt-1 pb-6 max-w-[760px] mx-auto overflow-x-hidden">
 			<LostPetReportWrapper
 				initialPet={updatedPet}
 				owner={ownerInfo}
