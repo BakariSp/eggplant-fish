@@ -190,7 +190,7 @@ function LandingForm() {
               onChange={(e) => setBoxCode(e.target.value)}
               maxLength={6}
               placeholder="Enter 6-char BOX CODE"
-              className="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white text-center tracking-widest"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white text-center tracking-widest text-black placeholder:text-black"
             />
             <Button
               onClick={handleVerify}
