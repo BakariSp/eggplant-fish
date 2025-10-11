@@ -199,7 +199,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Post title..."
-              className="w-full rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
+              className="w-full rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm text-black placeholder:text-black focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)] focus:font-semibold"
               maxLength={100}
             />
             <div className="relative">

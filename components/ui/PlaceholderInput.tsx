@@ -65,7 +65,7 @@ export const PlaceholderInput = forwardRef<HTMLInputElement, PlaceholderInputPro
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={showPlaceholder ? placeholder : ""}
-        className={`${className || ''} ${showPlaceholder ? 'text-gray-400 italic' : 'text-gray-900'}`}
+        className={`${className || ''} ${showPlaceholder ? 'text-gray-400 italic' : 'text-black focus:font-semibold'} placeholder:text-black`}
         {...props}
       />
     );
@@ -252,7 +252,7 @@ export const PlaceholderTags: React.FC<PlaceholderTagsProps> = ({
             onChange={(e) => setNewTagInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Add a new tag..."
-            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent"
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-black placeholder:text-black focus:font-semibold"
             style={{
               boxShadow: 'none'
             }}

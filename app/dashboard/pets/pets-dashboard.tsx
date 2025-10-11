@@ -69,8 +69,8 @@ export default function PetsDashboard() {
           <input
             type="text"
             placeholder="Search"
-            className="w-full h-12 rounded-full bg-white shadow-sm px-5 pr-10 outline-none focus:ring-2"
-            style={{ border: "2px solid #EC5914", color: "#2B1F1B" }}
+            className="w-full h-12 rounded-full bg-white shadow-sm px-5 pr-10 outline-none focus:ring-2 text-black placeholder:text-black focus:font-semibold"
+            style={{ border: "2px solid #EC5914" }}
           />
           <div
             className="absolute top-1/2 -translate-y-1/2 right-4 text-[#EC5914]"
@@ -150,7 +150,7 @@ export default function PetsDashboard() {
           <input
             type="text"
             placeholder="Search"
-            className="w-full h-12 rounded-full bg-[color:var(--background)] shadow-sm px-5 pr-12 outline-none focus:ring-0 placeholder-[#8f743c]"
+            className="w-full h-12 rounded-full bg-[color:var(--background)] shadow-sm px-5 pr-12 outline-none focus:ring-0 text-black placeholder:text-black focus:font-semibold"
             style={{ border: "2px solid #EC5914" }}
           />
           <div className="absolute top-1/2 -translate-y-1/2 right-4 text-[#EC5914]" aria-hidden>

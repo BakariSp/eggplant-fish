@@ -134,7 +134,7 @@ function VerifyForm() {
               value={activationCode}
               onChange={handleCodeChange}
               placeholder="#DEF9977"
-              className="w-full pl-12 pr-12 py-4 text-lg font-mono tracking-wider rounded-2xl border-0 text-gray-300 placeholder-gray-500"
+              className="w-full pl-12 pr-12 py-4 text-lg font-mono tracking-wider rounded-2xl border-0 text-black placeholder:text-black focus:font-semibold"
               style={{ 
                 backgroundColor: "rgba(0, 0, 0, 0.3)",
                 backdropFilter: "blur(10px)"
