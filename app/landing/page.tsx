@@ -157,7 +157,19 @@ function LandingForm() {
             <p className="text-sm text-[#8f743c] opacity-80">Tag: {tagCode}</p>
           )}
           {!tagCode && (
-            <p className="text-sm text-red-600">Missing tag id. Open via NFC/QR link.</p>
+            <div className="text-center">
+              <p className="text-sm text-red-600 mb-1">To see portfolio, open via NFC link</p>
+              <p className="text-sm">
+                <a 
+                  href="https://eggplantfish.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#8f743c] hover:text-[#7d6635] underline"
+                >
+                  To see more product
+                </a>
+              </p>
+            </div>
           )}
         </div>
 

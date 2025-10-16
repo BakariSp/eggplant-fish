@@ -167,10 +167,14 @@ function LoginForm() {
                   className="w-full py-4 rounded-2xl border border-gray-300 bg-white"
                 >
                   <div className="flex items-center justify-center space-x-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="#EC5914" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="L22 6L12 13L2 6" stroke="#EC5914" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <Image
+                      src="/icon/MailOutlined.svg"
+                      alt="Email icon"
+                      width={20}
+                      height={20}
+                      className="opacity-70"
+                      style={{ filter: 'brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(101%) contrast(92%)' }}
+                    />
                     <span className="text-gray-700">Email / Phone number</span>
                   </div>
                 </Button>
@@ -181,10 +185,14 @@ function LoginForm() {
                 <div className="space-y-4">
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="L22 6L12 13L2 6" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                      <Image
+                        src="/icon/MailOutlined.svg"
+                        alt="Email icon"
+                        width={20}
+                        height={20}
+                        className="opacity-60"
+                        style={{ filter: 'brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(101%) contrast(92%)' }}
+                      />
                     </div>
                     <Input
                       type="email"
