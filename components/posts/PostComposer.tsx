@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { maybeCompressImage } from "@/lib/image";
 import { createPost } from "@/server/actions/createPost";
 import { uploadImage } from "@/lib/storage";
 
@@ -15,6 +16,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [images, setImages] = useState<File[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -31,14 +33,30 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, 3);
+    // Revoke previous preview URLs
+    try { imageUrls.forEach((u) => URL.revokeObjectURL(u)); } catch {}
+    const urls = files.map((f) => URL.createObjectURL(f));
     setImages(files);
+    setImageUrls(urls);
     setCurrentImageIndex(0);
   };
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+    setImageUrls(prev => {
+      const toRevoke = prev[index];
+      try { if (toRevoke) URL.revokeObjectURL(toRevoke); } catch {}
+      return prev.filter((_, i) => i !== index);
+    });
     setCurrentImageIndex(prev => Math.min(prev, images.length - 2));
   };
+
+  // Revoke object URLs when component unmounts to reduce memory pressure on mobile
+  useEffect(() => {
+    return () => {
+      try { imageUrls.forEach((u) => URL.revokeObjectURL(u)); } catch {}
+    };
+  }, [imageUrls]);
 
   // Touch/Mouse handlers for swipe gestures
   const handleStart = useCallback((clientX: number) => {
@@ -80,8 +98,21 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
     handleStart(e.clientX);
   };
 
+  // rAF-based throttle to reduce event flood
+  const rafId = useRef<number | null>(null);
+  const lastXRef = useRef<number>(0);
+  const scheduleMove = (x: number) => {
+    lastXRef.current = x;
+    if (rafId.current == null) {
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
+        handleMove(lastXRef.current);
+      });
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
-    handleMove(e.clientX);
+    scheduleMove(e.clientX);
   };
 
   const handleMouseUp = () => {
@@ -95,7 +126,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
 
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault(); // Prevent scrolling
-    handleMove(e.touches[0].clientX);
+    scheduleMove(e.touches[0].clientX);
   };
 
   const handleTouchEnd = () => {
@@ -128,7 +159,8 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
       const imageUrls: string[] = [];
       
       for (const file of images) {
-        const uploadResult = await uploadImage(file, {
+        const compressed = await maybeCompressImage(file, { maxDimension: 1600, quality: 0.82, mimeType: "image/webp" });
+        const uploadResult = await uploadImage(compressed, {
           bucket: "user-image",
           folder: `posts/${petId}`,
           allowedTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
@@ -223,7 +255,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
                 {/* Main Image Display */}
                 <div 
                   ref={imageContainerRef}
-                  className="relative h-48 rounded-lg overflow-hidden border border-[color:var(--brand-200)] bg-gray-50 select-none"
+                  className="relative h-48 rounded-lg overflow-hidden border border-[color:var(--brand-200)] bg-gray-50 select-none gpu-transform"
                   onMouseDown={handleMouseDown}
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
@@ -239,10 +271,10 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
                       transform: `translateX(${-currentImageIndex * 100 + (isDragging ? (dragOffset / (imageContainerRef.current?.offsetWidth || 300)) * 100 : 0)}%)`,
                     }}
                   >
-                    {images.map((image, index) => (
+                    {imageUrls.map((url, index) => (
                       <div key={index} className="relative h-full flex-shrink-0" style={{ width: '100%' }}>
                         <Image
-                          src={URL.createObjectURL(image)}
+                          src={url}
                           alt={`Upload ${index + 1}`}
                           fill
                           className="object-cover"
@@ -312,7 +344,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
                 
                 {/* Thumbnail Strip */}
                 <div className="flex gap-2 justify-center">
-                  {images.map((image, index) => (
+                  {imageUrls.map((url, index) => (
                     <button
                       key={index}
                       type="button"
@@ -324,7 +356,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
                       }`}
                     >
                       <Image
-                        src={URL.createObjectURL(image)}
+                        src={url}
                         alt={`Thumbnail ${index + 1}`}
                         fill
                         className="object-cover"

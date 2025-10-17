@@ -32,7 +32,7 @@ export default function PostCard({ post, onDelete, isPublic = false }: Props) {
   };
 
   return (
-    <article className="rounded-2xl border border-[color:var(--brand-200)] soft-shadow p-4 bg-white space-y-3 relative">
+    <article className="rounded-2xl border border-[color:var(--brand-200)] soft-shadow p-4 bg-white space-y-3 relative cv-auto">
       {/* Menu button */}
       {!isPublic && onDelete && (
         <div className="absolute top-3 right-3">

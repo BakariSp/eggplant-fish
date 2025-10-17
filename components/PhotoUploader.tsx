@@ -2,6 +2,12 @@
 
 import { useRef, useState } from "react";
 import { useImageUpload } from "../lib/hooks/useImageUpload";
+import { maybeCompressImage } from "@/lib/image";
+// @ts-ignore - bundlers handle worker imports or can be adapted
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import CompressWorker from "@/lib/workers/image-compress.worker.ts?worker";
+import type { CompressOptions } from "@/lib/image";
 import { ImageUploadOptions } from "../lib/storage";
 
 interface PhotoUploaderProps {
@@ -12,6 +18,9 @@ interface PhotoUploaderProps {
   className?: string;
   children?: React.ReactNode;
   disabled?: boolean;
+  compressOptions?: CompressOptions;
+  capture?: "environment" | "user";
+  maxFilesRemaining?: number;
 }
 
 export default function PhotoUploader({
@@ -22,31 +31,82 @@ export default function PhotoUploader({
   className = "",
   children,
   disabled = false,
+  compressOptions,
+  capture,
+  maxFilesRemaining,
 }: PhotoUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { isUploading, progress, error, upload, reset } = useImageUpload();
+  const { isUploading, progress, error, upload, reset, abort } = useImageUpload();
   const [dragOver, setDragOver] = useState(false);
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    if (typeof maxFilesRemaining === "number" && maxFilesRemaining <= 0) return;
 
     onUploadStart?.();
     
     // For multiple files, upload them one by one
     if (multiple) {
-      for (let i = 0; i < files.length; i++) {
-        const result = await upload(files[i], uploadOptions);
+      const total = typeof maxFilesRemaining === "number" ? Math.min(files.length, Math.max(0, maxFilesRemaining)) : files.length;
+      for (let i = 0; i < total; i++) {
+        const f = files[i];
+        // Friendly skip for HEIC/HEIF to avoid upload surprises on non-iOS browsers
+        if (/heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(f.name)) {
+          // eslint-disable-next-line no-alert
+          alert("HEIC/HEIF 图片暂不支持直接上传，请先转换为 JPG/PNG/WebP 再试。");
+          continue;
+        }
+        // Compress before upload to reduce device heat and bandwidth
+        // Try Web Worker compression first
+        let compressed = f;
+        try {
+          const worker = new CompressWorker();
+          compressed = await new Promise<File>((resolve) => {
+            const opts = compressOptions || { maxDimension: 1600, quality: 0.82, mimeType: "image/webp" };
+            worker.onmessage = (e: MessageEvent) => {
+              // @ts-ignore
+              const data = e.data as { ok: boolean; file?: File };
+              resolve(data.ok && data.file ? data.file : f);
+              worker.terminate();
+            };
+            worker.postMessage({ file: f, options: opts });
+          });
+        } catch {
+          compressed = await maybeCompressImage(f, compressOptions || { maxDimension: 1600, quality: 0.82, mimeType: "image/webp", yieldIdleForLargeFiles: true });
+        }
+        const result = await upload(compressed, uploadOptions);
         onUploadComplete?.(result);
       }
     } else {
       // Single file upload
-      const result = await upload(files[0], uploadOptions);
+      const f = files[0];
+      if (/heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(f.name)) {
+        alert("HEIC/HEIF 图片暂不支持直接上传，请先转换为 JPG/PNG/WebP 再试。");
+        return;
+      }
+      let compressed = f;
+      try {
+        const worker = new CompressWorker();
+        compressed = await new Promise<File>((resolve) => {
+          const opts = compressOptions || { maxDimension: 1600, quality: 0.82, mimeType: "image/webp" };
+          worker.onmessage = (e: MessageEvent) => {
+            // @ts-ignore
+            const data = e.data as { ok: boolean; file?: File };
+            resolve(data.ok && data.file ? data.file : f);
+            worker.terminate();
+          };
+          worker.postMessage({ file: f, options: opts });
+        });
+      } catch {
+        compressed = await maybeCompressImage(f, compressOptions || { maxDimension: 1600, quality: 0.82, mimeType: "image/webp", yieldIdleForLargeFiles: true });
+      }
+      const result = await upload(compressed, uploadOptions);
       onUploadComplete?.(result);
     }
   };
 
   const handleClick = () => {
-    if (!disabled && !isUploading) {
+    if (!disabled && !isUploading && !(typeof maxFilesRemaining === "number" && maxFilesRemaining <= 0)) {
       fileInputRef.current?.click();
     }
   };
@@ -82,7 +142,8 @@ export default function PhotoUploader({
         multiple={multiple}
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
-        disabled={disabled || isUploading}
+        disabled={disabled || isUploading || (typeof maxFilesRemaining === "number" && maxFilesRemaining <= 0)}
+        {...(capture ? { capture } : {})}
       />
       
       <div
@@ -136,6 +197,12 @@ export default function PhotoUploader({
             className="ml-2 text-red-800 hover:text-red-900 underline"
           >
             Try again
+          </button>
+          <button
+            onClick={abort}
+            className="ml-3 text-red-800 hover:text-red-900 underline"
+          >
+            Cancel upload
           </button>
         </div>
       )}

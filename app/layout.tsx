@@ -47,6 +47,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} ${baloo2.variable} antialiased`}
       >
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL || undefined} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL || undefined} />
         {/* Wireframe overlay via query ?wf=1 */}
         <AuthProvider>
           <div

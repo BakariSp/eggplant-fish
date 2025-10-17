@@ -129,3 +129,45 @@ textarea:not(:placeholder-shown) {
   -webkit-text-fill-color: #000000; /* iOS Safari */
   caret-color: #000000;
 }
+
+/* Dark mode adaptations for text inputs and textarea */
+@media (prefers-color-scheme: dark) {
+  input, textarea, select {
+    color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
+    background-color: #1b1b1b;
+    border-color: #3a3a3a;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #c3c3c3;
+  }
+  .focus-visible:ring,
+  .focus\:ring-2 {
+    --ring-color: #c8aa67; /* brand-600 */
+  }
+}
+
+/* Performance utilities */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 300px;
+}
+.gpu-transform {
+  will-change: transform;
+}
+
+/* Respect reduced motion on mobile */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Lighter shadows on small screens to reduce GPU cost */
+@media (max-width: 480px) {
+  .soft-shadow {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04);
+  }
+}

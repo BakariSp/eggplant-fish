@@ -13,6 +13,7 @@ export interface UseImageUploadState {
 export interface UseImageUploadReturn extends UseImageUploadState {
   upload: (file: File, options: ImageUploadOptions) => Promise<ImageUploadResult>;
   reset: () => void;
+  abort: () => void;
 }
 
 export function useImageUpload(): UseImageUploadReturn {
@@ -22,6 +23,8 @@ export function useImageUpload(): UseImageUploadReturn {
     error: null,
     result: null,
   });
+
+  const controllerRef = { current: null as AbortController | null } as { current: AbortController | null };
 
   const upload = useCallback(async (
     file: File,
@@ -36,9 +39,13 @@ export function useImageUpload(): UseImageUploadReturn {
     }));
 
     try {
+      controllerRef.current?.abort();
+      controllerRef.current = new AbortController();
+      const signal = controllerRef.current.signal;
       // Simulate progress for better UX
       setState(prev => ({ ...prev, progress: 25 }));
       
+      if (signal.aborted) throw new Error("aborted");
       const result = await uploadImage(file, options);
       
       setState(prev => ({ ...prev, progress: 100 }));
@@ -76,9 +83,15 @@ export function useImageUpload(): UseImageUploadReturn {
     });
   }, []);
 
+  const abort = useCallback(() => {
+    try { controllerRef.current?.abort(); } catch {}
+    reset();
+  }, [reset]);
+
   return {
     ...state,
     upload,
     reset,
+    abort,
   };
 }

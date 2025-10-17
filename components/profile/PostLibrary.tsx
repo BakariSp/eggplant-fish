@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 type Post = {
   id: string;
@@ -24,17 +25,40 @@ export default function PostLibrary({ posts, onPostClick, isPublic = false }: Pr
     });
   };
 
+  // Simple windowing: render in chunks as user scrolls
+  const CHUNK = 12;
+  const [visibleCount, setVisibleCount] = useState(Math.min(CHUNK, posts.length));
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setVisibleCount(Math.min(CHUNK, posts.length));
+  }, [posts.length]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + CHUNK, posts.length));
+        }
+      }
+    }, { rootMargin: "400px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [posts.length]);
+
   return (
-    <section className="relative z-10 px-6 pb-8 overflow-x-hidden" style={{ marginTop: '104px' }}>
+    <section className="relative z-10 px-6 pb-8 overflow-x-hidden cv-auto" style={{ marginTop: '104px' }}>
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-white">Post Library</h2>
       </div>
 
       <div className="grid grid-cols-2 gap-3 items-start">
-        {posts.map((post) => (
+        {posts.slice(0, visibleCount).map((post) => (
           <div 
             key={post.id} 
-            className="bg-white rounded-2xl overflow-hidden shadow-lg cursor-pointer hover:shadow-xl transition-shadow relative group"
+            className="bg-white rounded-2xl overflow-hidden shadow-lg cursor-pointer hover:shadow-xl transition-shadow relative group cv-auto"
             onClick={() => onPostClick?.(post)}
           >
             {/* Image */}
@@ -93,6 +117,9 @@ export default function PostLibrary({ posts, onPostClick, isPublic = false }: Pr
           </div>
         ))}
         
+        {/* Sentinel for windowing */}
+        <div ref={sentinelRef} className="col-span-full h-6" />
+
         {/* Show empty state if no posts */}
         {posts.length === 0 && (
           <div className="col-span-full text-center py-12">

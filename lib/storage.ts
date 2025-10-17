@@ -69,7 +69,7 @@ export async function uploadImage(
     const { data, error } = await supabase.storage
       .from(options.bucket)
       .upload(filePath, file, {
-        cacheControl: "3600",
+        cacheControl: "86400", // 1 day for public images
         upsert: true,
       });
 

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import PostComposer from "@/components/posts/PostComposer";
+import dynamic from "next/dynamic";
+const PostComposer = dynamic(() => import("@/components/posts/PostComposer"), { ssr: false });
 import SectionHeader from "@/components/ui/SectionHeader";
 // Removed EmergencyPanel per new design
  
@@ -497,15 +498,15 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
 
          {/* Posts Cards - Top half outside background */}
          <div className="relative px-4 mb-[-120px] z-20">
-           <div
-             ref={carouselRef}
-             className="relative min-h-[220px] select-none"
-             onMouseDown={(e) => { e.preventDefault(); beginDrag(e.clientX, e.clientY); }}
-             onTouchStart={(e) => { const t = e.touches[0]; beginDrag(t.clientX, t.clientY); }}
-             onTouchMove={(e) => { if (activeAxis === 'x') e.preventDefault(); const t = e.touches[0]; moveDrag(t.clientX, t.clientY); }}
-             onTouchEnd={() => endDrag()}
-             style={{ touchAction: 'pan-y' }}
-           >
+          <div
+            ref={carouselRef}
+            className="relative min-h-[220px] select-none"
+            onPointerDown={(e) => { e.preventDefault(); beginDrag(e.clientX, (e as any).clientY ?? 0); }}
+            onPointerMove={(e) => { if (activeAxis === 'x') e.preventDefault(); moveDrag(e.clientX, (e as any).clientY ?? undefined); }}
+            onPointerUp={() => endDrag()}
+            onPointerCancel={() => endDrag()}
+            style={{ touchAction: 'pan-y' }}
+          >
              {previewPosts.length > 0 ? (
                // 渲染所有 N 张，前面三张自然成为前侧，其他在背面可见
               previewPosts.map((post, i) => {
@@ -560,6 +561,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
                       alt={post.title || "Post image"}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 480px) 160px, (max-width: 768px) 200px, 240px"
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
@@ -801,7 +803,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
                         <div key={p.id} className="h-full flex-shrink-0 flex items-center justify-center" style={{ width: `${100 / (popupDataSource.length || 1)}%` }}>
                           <div className="relative w-full h-full">
                             {p.images?.[0] ? (
-                              <Image src={p.images[0]} alt={p.title || "Post image"} fill className="object-contain" />
+                              <Image src={p.images[0]} alt={p.title || "Post image"} fill className="object-contain" sizes="(max-width: 480px) 90vw, (max-width: 768px) 80vw, 60vw" />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
                                 <span className="text-6xl opacity-50">📷</span>

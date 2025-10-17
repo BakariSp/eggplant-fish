@@ -7,7 +7,7 @@ import Button from "@/components/ui/Button";
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   return (
-    <nav className="w-full sticky top-0 z-20 backdrop-blur bg-white/70 border-b border-[color:var(--brand-100)]">
+    <nav className="w-full sticky top-0 z-20 bg-white/80 md:backdrop-blur border-b border-[color:var(--brand-100)]">
       <div className="mx-auto max-w-[1100px] px-4 sm:px-5 md:px-8 lg:px-12 h-12 flex items-center justify-between safe-x">
         <Link href="/" className="text-sm font-semibold" style={{ color: "var(--brand-800)" }}>
           NFC Pet Tag
