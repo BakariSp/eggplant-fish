@@ -709,7 +709,6 @@ export default function EditProfileClient({ petId }: Props) {
                 multiple={true}
                 className="w-full"
                 disabled={isUploading || uploadedImages.filter(url => url && url.trim() !== "").length >= 8}
-                capture="environment"
                 compressOptions={{ maxDimension: 1200, quality: 0.82, mimeType: "image/webp" }}
                 maxFilesRemaining={Math.max(0, 8 - uploadedImages.filter(url => url && url.trim() !== "").length)}
               >
