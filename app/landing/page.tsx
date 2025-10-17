@@ -135,7 +135,7 @@ function LandingForm() {
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>
-      <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="flex flex-col items-center justify-center px-6 py-12 text-center safe-x safe-y">
         <div className="mb-12 w-full max-w-md">
           <div className="relative w-full max-w-[300px] mx-auto">
             <Image
@@ -150,11 +150,11 @@ function LandingForm() {
         </div>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-[#8f743c] mb-2">
+          <h1 className="text-3xl sm:text-4xl font-bold text-[color:var(--brand-800)] mb-2 leading-tight">
             Welcome to<br />EGGPLANT.FISH
           </h1>
           {tagCode && (
-            <p className="text-sm text-[#8f743c] opacity-80">Tag: {tagCode}</p>
+            <p className="text-sm text-[color:var(--brand-800)] opacity-80">Tag: {tagCode}</p>
           )}
           {!tagCode && (
             <div className="text-center">
@@ -164,7 +164,7 @@ function LandingForm() {
                   href="https://eggplantfish.com" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-[#8f743c] hover:text-[#7d6635] underline"
+                  className="text-[color:var(--brand-800)] hover:text-[color:var(--brand-700)] underline"
                 >
                   To see more product
                 </a>
@@ -184,31 +184,43 @@ function LandingForm() {
                   setShowForm(true);
                 }
               }}
-              className="w-full py-4 text-lg font-semibold rounded-2xl"
-              style={{ backgroundColor: "#8f743c", color: "white" }}
+              size="lg"
+              fullWidth
+              className="rounded-2xl font-semibold"
             >
               Get started →
             </Button>
           </div>
         ) : (
-          <div className="w-full max-w-sm space-y-4">
+          <div className="w-full max-w-sm space-y-4 sm:space-y-5">
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200" role="alert" aria-live="polite">
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
             <input
               value={boxCode}
-              onChange={(e) => setBoxCode(e.target.value)}
+              onChange={(e) => {
+                const next = (e.target.value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                setBoxCode(next);
+              }}
+              inputMode="text"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              enterKeyHint="done"
+              pattern="[A-Za-z0-9]{6}"
+              aria-label="Enter 6-character box code"
               maxLength={6}
               placeholder="Enter 6-char BOX CODE"
-              className="w-full px-4 py-3 rounded-2xl border border-gray-300 bg-white text-center tracking-widest text-black placeholder:text-black"
+              className="w-full px-4 py-3 rounded-2xl border border-[color:var(--brand-200)] bg-white text-center tracking-widest text-black placeholder:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-600)]"
             />
             <Button
               onClick={handleVerify}
               disabled={verifying || !tagCode || boxCode.length !== 6}
-              className="w-full py-3 text-lg font-semibold rounded-2xl disabled:opacity-50"
-              style={{ backgroundColor: "#8f743c", color: "white" }}
+              isLoading={verifying}
+              size="lg"
+              fullWidth
+              className="rounded-2xl font-semibold"
             >
               {verifying ? "Verifying..." : verified ? "Verified ✓" : "Verify"}
             </Button>
@@ -217,7 +229,9 @@ function LandingForm() {
               <Button
                 onClick={handleGoogleConnect}
                 variant="ghost"
-                className="w-full py-4 rounded-2xl border border-gray-300 bg-white"
+                size="lg"
+                fullWidth
+                className="rounded-2xl"
               >
                 Connect with Google
               </Button>
@@ -233,7 +247,7 @@ export default function LandingPage() {
   return (
     <Suspense fallback={
       <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>
-        <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+        <div className="flex flex-col items-center justify-center px-6 py-12 text-center safe-x safe-y">
           <div className="mb-12 w-full max-w-md">
             <div className="relative w-full max-w-[300px] mx-auto">
               <Image
@@ -247,10 +261,10 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-[#8f743c] mb-2">
+            <h1 className="text-3xl sm:text-4xl font-bold text-[color:var(--brand-800)] mb-2">
               Welcome to<br />EGGPLANT.FISH
             </h1>
-            <p className="text-sm text-[#8f743c] opacity-80">Loading...</p>
+            <p className="text-sm text-[color:var(--brand-800)] opacity-80">Loading...</p>
           </div>
         </div>
       </main>

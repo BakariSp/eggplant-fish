@@ -202,7 +202,14 @@ export default function EditProfileClient({ petId }: Props) {
   // Handle image upload
   const handleImageUpload = (result: { success: boolean; url?: string; path?: string; error?: string }) => {
     if (result.success && result.url) {
-      setUploadedImages(prev => [...prev, result.url!]);
+      setUploadedImages(prev => {
+        const validPrev = prev.filter(url => url && url.trim() !== "");
+        if (validPrev.length >= 8) {
+          alert("Maximum 8 photos reached. Remove some to upload new ones.");
+          return prev;
+        }
+        return [...prev, result.url!];
+      });
       console.log("✅ Image uploaded successfully:", result.url);
     } else {
       console.error("❌ Image upload failed:", result.error);
@@ -212,6 +219,11 @@ export default function EditProfileClient({ petId }: Props) {
   };
 
   const handleUploadStart = () => {
+    const validCount = uploadedImages.filter(url => url && url.trim() !== "").length;
+    if (validCount >= 8) {
+      alert("Maximum 8 photos reached. Remove some to upload new ones.");
+      return;
+    }
     setIsUploading(true);
   };
 
@@ -639,14 +651,28 @@ export default function EditProfileClient({ petId }: Props) {
           <label className="block text-sm font-medium mb-2" style={{ color: "#2B1B12" }}>
             Profile Photos
           </label>
-          <div className="bg-white rounded-xl p-4">
+          <div className="bg-white rounded-xl p-4 relative">
+            {/* Dynamic counter n/8 */}
+            <div className="absolute top-3 right-3 text-xs text-gray-500">
+              {uploadedImages.filter(url => url && url.trim() !== "").length}/8
+            </div>
             <div className="space-y-4">
               {/* Profile Photos */}
               {uploadedImages.filter(url => url && url.trim() !== "").length > 0 && (
                 <div>
                   <div className="flex gap-2 flex-wrap">
                     {uploadedImages.filter(url => url && url.trim() !== "").map((url, index) => (
-                      <div key={index} className="relative group">
+                      <div
+                        key={index}
+                        className="relative group cursor-pointer"
+                        onClick={() => {
+                          const validUrls = uploadedImages.filter(url => url && url.trim() !== "");
+                          const actualIndex = uploadedImages.indexOf(validUrls[index]);
+                          removeImage(actualIndex);
+                        }}
+                        role="button"
+                        aria-label={`Remove profile photo ${index + 1}`}
+                      >
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
                           <Image
                             src={url}
@@ -658,13 +684,14 @@ export default function EditProfileClient({ petId }: Props) {
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             // Find the actual index in the original array
                             const validUrls = uploadedImages.filter(url => url && url.trim() !== "");
                             const actualIndex = uploadedImages.indexOf(validUrls[index]);
                             removeImage(actualIndex);
                           }}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                         >
                           ×
                         </button>
@@ -681,14 +708,20 @@ export default function EditProfileClient({ petId }: Props) {
                 onUploadComplete={handleImageUpload}
                 multiple={true}
                 className="w-full"
-                disabled={isUploading}
+                disabled={isUploading || uploadedImages.filter(url => url && url.trim() !== "").length >= 8}
               >
                 <div className="text-center py-4">
                   <div className="text-sm text-gray-600 mb-1">
-                    {isUploading ? "Uploading..." : "Add More Photos"}
+                    {uploadedImages.filter(url => url && url.trim() !== "").length >= 8
+                      ? "Maximum photos reached"
+                      : isUploading
+                        ? "Uploading..."
+                        : "Add More Photos"}
                   </div>
                   <div className="text-xs text-gray-500">
-                    Click or drag to upload photos (up to 50MB each)
+                    {uploadedImages.filter(url => url && url.trim() !== "").length >= 8
+                      ? "remove some to upload new ones."
+                      : "Click or drag to upload photos (up to 50MB each)"}
                   </div>
                 </div>
               </PhotoUploader>

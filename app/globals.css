@@ -121,3 +121,11 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
 }
+
+/* Form controls: ensure typed text in textarea is black on mobile (iOS Safari) */
+textarea:focus,
+textarea:not(:placeholder-shown) {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000; /* iOS Safari */
+  caret-color: #000000;
+}

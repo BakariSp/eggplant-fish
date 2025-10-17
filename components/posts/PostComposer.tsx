@@ -200,6 +200,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Post title..."
               className="w-full rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm text-black placeholder:text-black focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)] focus:font-semibold"
+              style={{ WebkitTextFillColor: "#000000", color: "#000000" }}
               maxLength={100}
             />
             <div className="relative">
@@ -207,7 +208,8 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="What's your pet up to today?"
-                className="w-full h-28 rounded-lg border border-[color:var(--brand-200)] px-3 py-2 pr-10 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)]"
+                className="w-full h-28 rounded-lg border border-[color:var(--brand-200)] px-3 py-2 pr-10 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)] text-black placeholder:text-black"
+                style={{ WebkitTextFillColor: "#000000", color: "#000000" }}
                 maxLength={500}
               />
               <div className="pointer-events-none absolute bottom-2 right-3 text-[10px] text-gray-400">
