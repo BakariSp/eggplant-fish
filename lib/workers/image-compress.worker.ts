@@ -5,8 +5,7 @@ export type WorkerCompressOptions = {
 };
 
 function isWorker(): boolean {
-  // @ts-ignore
-  return typeof self !== "undefined" && typeof (self as any).postMessage === "function";
+  return typeof self !== "undefined" && typeof (self as unknown as Worker).postMessage === "function";
 }
 
 async function compressInWorker(file: File, opts: WorkerCompressOptions) {
@@ -34,10 +33,13 @@ async function compressInWorker(file: File, opts: WorkerCompressOptions) {
   const canvas = new OffscreenCanvas(targetWidth, targetHeight);
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return { ok: false } as const;
-  (ctx as any).imageSmoothingEnabled = true;
-  (ctx as any).imageSmoothingQuality = "high";
+  // use high quality scaling where supported
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (ctx as unknown as any).imageSmoothingEnabled = true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (ctx as unknown as any).imageSmoothingQuality = "high";
   ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
-  try { (bitmap as any).close?.(); } catch {}
+  try { (bitmap as unknown as { close?: () => void }).close?.(); } catch {}
 
   const blob = await canvas.convertToBlob({ type: targetMime, quality }).catch(() => null);
   if (!blob) return { ok: false } as const;
@@ -52,18 +54,19 @@ async function compressInWorker(file: File, opts: WorkerCompressOptions) {
 }
 
 if (isWorker()) {
-  // @ts-ignore
-  self.onmessage = async (e: MessageEvent) => {
-    const { file, options } = e.data as { file: File; options: WorkerCompressOptions };
+  (self as unknown as Worker).onmessage = async (e: MessageEvent) => {
+    const payload = e.data as { file: File; options?: WorkerCompressOptions };
+    const { file, options } = payload;
     try {
       const res = await compressInWorker(file, options || {});
-      // @ts-ignore
-      (self as any).postMessage(res);
-    } catch (err) {
-      // @ts-ignore
-      (self as any).postMessage({ ok: false });
+      (self as unknown as Worker).postMessage(res);
+    } catch {
+      (self as unknown as Worker).postMessage({ ok: false });
     }
   };
 }
+
+const workerModule = null as unknown as never;
+export default workerModule;
 
 

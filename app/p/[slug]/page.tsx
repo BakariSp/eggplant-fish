@@ -99,7 +99,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="min-h-screen">
-      <PostsLostClient pet={pet} ownerInfo={ownerInfo} emergencyInfo={emergencyInfo} isPublic={true} />
+      <PostsLostClient pet={pet} ownerInfo={ownerInfo} emergencyInfo={emergencyInfo} />
     </main>
   );
 }

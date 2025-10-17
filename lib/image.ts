@@ -18,8 +18,10 @@ export async function maybeCompressImage(file: File, options: CompressOptions = 
   // Optionally yield control before heavy work for large files
   if (options.yieldIdleForLargeFiles && file.size > 4 * 1024 * 1024) {
     await new Promise<void>((resolve) => {
-      const rid = (window as any).requestIdleCallback as undefined | ((cb: () => void) => number);
-      if (typeof rid === "function") rid(() => resolve());
+      const hasRIC = typeof (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback === "function";
+      if (hasRIC) {
+        (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(() => resolve());
+      }
       else setTimeout(() => resolve(), 0);
     });
   }
@@ -66,7 +68,7 @@ export async function maybeCompressImage(file: File, options: CompressOptions = 
       });
       width = imgEl.naturalWidth;
       height = imgEl.naturalHeight;
-      drawImage = (ctx) => drawWithOrientation(ctx, imgEl as any, orientation);
+      drawImage = (ctx) => drawWithOrientation(ctx, imgEl, orientation);
     } finally {
       URL.revokeObjectURL(objectUrl);
     }
@@ -89,28 +91,34 @@ export async function maybeCompressImage(file: File, options: CompressOptions = 
     ? new OffscreenCanvas(targetWidth, targetHeight)
     : Object.assign(document.createElement("canvas"), { width: targetWidth, height: targetHeight });
 
-  const ctx = (canvas as any).getContext("2d", { alpha: true });
+  const ctx = (canvas as HTMLCanvasElement).getContext
+    ? (canvas as HTMLCanvasElement).getContext("2d", { alpha: true })
+    : (canvas as OffscreenCanvas).getContext("2d", { alpha: true });
   if (!ctx) return file;
 
   // Draw with high quality scaling
-  (ctx as any).imageSmoothingEnabled = true;
-  (ctx as any).imageSmoothingQuality = "high";
-  drawImage(ctx as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (ctx as unknown as any).imageSmoothingEnabled = true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (ctx as unknown as any).imageSmoothingQuality = "high";
+  drawImage(ctx as CanvasRenderingContext2D);
 
   const blob: Blob | null = await new Promise((resolve) => {
-    const c = canvas as any;
-    if (typeof c.convertToBlob === "function") {
-      // OffscreenCanvas path
-      c.convertToBlob({ type: targetMime, quality }).then(resolve).catch(() => resolve(null));
-    } else if (c.toBlob) {
-      c.toBlob((b: Blob | null) => resolve(b), targetMime, quality);
-    } else {
-      resolve(null);
+    const maybeOffscreen = canvas as OffscreenCanvas & { convertToBlob?: (opts: { type: string; quality?: number }) => Promise<Blob> };
+    if (typeof maybeOffscreen.convertToBlob === "function") {
+      maybeOffscreen.convertToBlob({ type: targetMime, quality }).then(resolve).catch(() => resolve(null));
+      return;
     }
+    const maybeDOM = canvas as HTMLCanvasElement;
+    if (maybeDOM.toBlob) {
+      maybeDOM.toBlob((b: Blob | null) => resolve(b), targetMime, quality);
+      return;
+    }
+    resolve(null);
   });
 
   // Cleanup bitmap
-  try { (bitmap as any)?.close?.(); } catch {}
+  try { (bitmap as unknown as { close?: () => void })?.close?.(); } catch {}
 
   if (!blob) return file;
 
@@ -173,12 +181,12 @@ function drawWithOrientation(
   source: CanvasImageSource,
   orientation: number | null
 ) {
-  const canvas = ctx.canvas as any;
+  const canvas = ctx.canvas as HTMLCanvasElement;
   const w = canvas.width;
   const h = canvas.height;
   // Default: no transform
   if (!orientation || orientation === 1) {
-    ctx.drawImage(source as any, 0, 0, w, h);
+    ctx.drawImage(source, 0, 0, w, h);
     return;
   }
   // Save and transform
@@ -216,7 +224,7 @@ function drawWithOrientation(
     default:
       break;
   }
-  ctx.drawImage(source as any, 0, 0, w, h);
+  ctx.drawImage(source, 0, 0, w, h);
   ctx.restore();
 }
 

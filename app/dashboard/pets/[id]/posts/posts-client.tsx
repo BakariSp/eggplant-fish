@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 const PostComposer = dynamic(() => import("@/components/posts/PostComposer"), { ssr: false });
@@ -9,6 +9,23 @@ import SectionHeader from "@/components/ui/SectionHeader";
  
 import PostLibrary from "@/components/profile/PostLibrary";
 import OwnerInfo from "@/components/profile/OwnerInfo";
+
+// Lightweight shimmer placeholder for image blur
+const shimmer = (w: number, h: number) => `
+  <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="g">
+        <stop stop-color="#eee" offset="20%" />
+        <stop stop-color="#ddd" offset="50%" />
+        <stop stop-color="#eee" offset="70%" />
+      </linearGradient>
+    </defs>
+    <rect width="${w}" height="${h}" fill="#eee" />
+    <rect id="r" width="${w}" height="${h}" fill="url(#g)" />
+    <animate xlink:href="#r" attributeName="x" from="-${w}" to="${w}" dur="1.2s" repeatCount="indefinite"  />
+  </svg>`;
+
+const toBase64 = (str: string) => (typeof window === "undefined" ? str : window.btoa(str));
 
 type Props = { 
   petId: string;
@@ -162,13 +179,13 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
   }, [posts]);
 
   // 根据点击来源获取对应的数据源
-  const getPopupDataSource = () => {
+  const getPopupDataSource = useCallback(() => {
     if (clickSource === 'carousel') {
       return previewPosts; // 最多9张
     } else {
       return allImagePosts; // 所有有图的post
     }
-  };
+  }, [clickSource, previewPosts, allImagePosts]);
 
   // 轮播逻辑：计算当前显示的三张图片（来自预览数据源）
   const getCurrentPosts = () => {
@@ -280,7 +297,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
     setSnapAngleDeg(0);
   };
 
-  const moveDrag = (x: number, y?: number) => {
+  const moveDrag = useCallback((x: number, y?: number) => {
     if (!isDragging) return;
     const dx = x - dragStartX;
     const dy = (y ?? dragStartY) - dragStartY;
@@ -300,9 +317,9 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
       const newAngle = (dx / width) * stepDeg * sensitivity;
       setAngleDeg(newAngle);
     }
-  };
+  }, [isDragging, dragStartX, dragStartY, activeAxis, previewPosts]);
 
-  const endDrag = () => {
+  const endDrag = useCallback(() => {
     if (!isDragging) return;
     const width = carouselRef.current?.offsetWidth || 300;
     const threshold = Math.max(40, width * 0.2);
@@ -338,7 +355,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
       setSuppressClick(true);
       setTimeout(() => setSuppressClick(false), 150);
     }
-  };
+  }, [isDragging, dragDeltaX, previewPosts, angleDeg]);
   
   // Global mouse listeners for dragging on desktop
   useEffect(() => {
@@ -501,8 +518,8 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
           <div
             ref={carouselRef}
             className="relative min-h-[220px] select-none"
-            onPointerDown={(e) => { e.preventDefault(); beginDrag(e.clientX, (e as any).clientY ?? 0); }}
-            onPointerMove={(e) => { if (activeAxis === 'x') e.preventDefault(); moveDrag(e.clientX, (e as any).clientY ?? undefined); }}
+            onPointerDown={(e) => { e.preventDefault(); beginDrag(e.clientX, e.clientY ?? 0); }}
+            onPointerMove={(e) => { if (activeAxis === 'x') e.preventDefault(); moveDrag(e.clientX, e.clientY ?? undefined); }}
             onPointerUp={() => endDrag()}
             onPointerCancel={() => endDrag()}
             style={{ touchAction: 'pan-y' }}
@@ -561,7 +578,10 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
                       alt={post.title || "Post image"}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 480px) 160px, (max-width: 768px) 200px, 240px"
+                      sizes="(max-width: 640px) 180px, (max-width: 768px) 200px, 240px"
+                      placeholder="blur"
+                      blurDataURL={`data:image/svg+xml;base64,${toBase64(shimmer(16, 16))}`}
+                      priority={i === ((currentIndex % (previewPosts.length || 1)) + (previewPosts.length || 1)) % (previewPosts.length || 1)}
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
@@ -803,7 +823,15 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
                         <div key={p.id} className="h-full flex-shrink-0 flex items-center justify-center" style={{ width: `${100 / (popupDataSource.length || 1)}%` }}>
                           <div className="relative w-full h-full">
                             {p.images?.[0] ? (
-                              <Image src={p.images[0]} alt={p.title || "Post image"} fill className="object-contain" sizes="(max-width: 480px) 90vw, (max-width: 768px) 80vw, 60vw" />
+                              <Image
+                                src={p.images[0]}
+                                alt={p.title || "Post image"}
+                                fill
+                                className="object-contain"
+                                sizes="(max-width: 480px) 90vw, (max-width: 768px) 80vw, 60vw"
+                                placeholder="blur"
+                                blurDataURL={`data:image/svg+xml;base64,${toBase64(shimmer(16, 12))}`}
+                              />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
                                 <span className="text-6xl opacity-50">📷</span>

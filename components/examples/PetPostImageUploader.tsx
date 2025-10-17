@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import PhotoUploader from "../PhotoUploader";
 import { getPetPostUploadOptions } from "../../lib/storage";
 
@@ -50,11 +51,15 @@ export default function PetPostImageUploader({
         <div className="grid grid-cols-2 gap-4">
           {uploadedImages.map((url, index) => (
             <div key={index} className="relative group">
-              <img
-                src={url}
-                alt={`Upload ${index + 1}`}
-                className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-              />
+              <div className="relative w-full h-32">
+                <Image
+                  src={url}
+                  alt={`Upload ${index + 1}`}
+                  fill
+                  className="object-cover rounded-lg border-2 border-gray-200"
+                  sizes="(max-width: 640px) 50vw, 33vw"
+                />
+              </div>
               <button
                 onClick={() => removeImage(index)}
                 className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"

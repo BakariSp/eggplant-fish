@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import PhotoUploader from "../PhotoUploader";
 import { getPetAvatarUploadOptions } from "../../lib/storage";
 
@@ -35,12 +36,15 @@ export default function PetAvatarUploader({
     <div className="flex flex-col items-center space-y-4">
       {/* Current Avatar Preview */}
       <div className="relative">
-        <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-lg">
+        <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-lg">
           {avatarUrl ? (
-            <img
+            <Image
               src={avatarUrl}
               alt="Pet Avatar"
-              className="w-full h-full object-cover"
+              fill
+              sizes="128px"
+              className="object-cover"
+              priority
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">

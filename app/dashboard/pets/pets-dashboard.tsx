@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
@@ -104,21 +105,22 @@ export default function PetsDashboard() {
                 const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
                 if (avatarUrl) {
                   return (
-                    <img
-                      src={avatarUrl}
-                      alt="Owner avatar"
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={avatarUrl}
+                        alt="Owner avatar"
+                        fill
+                        className="object-cover"
+                        sizes="112px"
+                        priority
+                      />
+                    </div>
                   );
                 }
                 // Transparent placeholder with same size to preserve layout
                 return (
                   <div aria-label="Avatar placeholder" className="w-full h-full">
-                    <img
-                      src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
-                      alt=""
-                      className="w-full h-full object-cover opacity-0"
-                    />
+                    <span className="block w-full h-full opacity-0" aria-hidden />
                   </div>
                 );
               })()}
@@ -193,11 +195,15 @@ export default function PetsDashboard() {
                     }
                     
                     return avatarSrc ? (
-                      <img
-                        src={avatarSrc}
-                        alt={pet.name || "Pet"}
-                        className="w-full h-full object-cover"
-                      />
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={avatarSrc}
+                          alt={pet.name || "Pet"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        />
+                      </div>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">

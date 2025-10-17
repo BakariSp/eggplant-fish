@@ -3,10 +3,6 @@
 import { useRef, useState } from "react";
 import { useImageUpload } from "../lib/hooks/useImageUpload";
 import { maybeCompressImage } from "@/lib/image";
-// @ts-ignore - bundlers handle worker imports or can be adapted
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import CompressWorker from "@/lib/workers/image-compress.worker.ts?worker";
 import type { CompressOptions } from "@/lib/image";
 import { ImageUploadOptions } from "../lib/storage";
 
@@ -52,7 +48,6 @@ export default function PhotoUploader({
         const f = files[i];
         // Friendly skip for HEIC/HEIF to avoid upload surprises on non-iOS browsers
         if (/heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(f.name)) {
-          // eslint-disable-next-line no-alert
           alert("HEIC/HEIF 图片暂不支持直接上传，请先转换为 JPG/PNG/WebP 再试。");
           continue;
         }
@@ -60,12 +55,11 @@ export default function PhotoUploader({
         // Try Web Worker compression first
         let compressed = f;
         try {
-          const worker = new CompressWorker();
+          const worker = new Worker(new URL("../lib/workers/image-compress.worker.ts", import.meta.url), { type: "module" });
           compressed = await new Promise<File>((resolve) => {
             const opts = compressOptions || { maxDimension: 1600, quality: 0.82, mimeType: "image/webp" };
-            worker.onmessage = (e: MessageEvent) => {
-              // @ts-ignore
-              const data = e.data as { ok: boolean; file?: File };
+            worker.onmessage = (e: MessageEvent<{ ok: boolean; file?: File }>) => {
+              const data = e.data;
               resolve(data.ok && data.file ? data.file : f);
               worker.terminate();
             };
@@ -86,12 +80,11 @@ export default function PhotoUploader({
       }
       let compressed = f;
       try {
-        const worker = new CompressWorker();
+        const worker = new Worker(new URL("../lib/workers/image-compress.worker.ts", import.meta.url), { type: "module" });
         compressed = await new Promise<File>((resolve) => {
           const opts = compressOptions || { maxDimension: 1600, quality: 0.82, mimeType: "image/webp" };
-          worker.onmessage = (e: MessageEvent) => {
-            // @ts-ignore
-            const data = e.data as { ok: boolean; file?: File };
+          worker.onmessage = (e: MessageEvent<{ ok: boolean; file?: File }>) => {
+            const data = e.data;
             resolve(data.ok && data.file ? data.file : f);
             worker.terminate();
           };

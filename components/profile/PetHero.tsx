@@ -52,8 +52,8 @@ export default function PetHero({ pet, tags = [], gender, images, petId, onToggl
   const [dragOffset, setDragOffset] = useState(0);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
-  const handlePrev = () => setIndex((i) => (i - 1 + gallery.length) % gallery.length);
-  const handleNext = () => setIndex((i) => (i + 1) % gallery.length);
+  const handlePrev = useCallback(() => setIndex((i) => (i - 1 + gallery.length) % gallery.length), [gallery.length]);
+  const handleNext = useCallback(() => setIndex((i) => (i + 1) % gallery.length), [gallery.length]);
 
   // Handle Lost button click - show confirmation modal first
   const handleLostClick = () => {

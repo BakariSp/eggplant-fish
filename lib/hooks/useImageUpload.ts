@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { uploadImage, ImageUploadOptions, ImageUploadResult } from "../storage";
 
 export interface UseImageUploadState {
@@ -24,7 +24,7 @@ export function useImageUpload(): UseImageUploadReturn {
     result: null,
   });
 
-  const controllerRef = { current: null as AbortController | null } as { current: AbortController | null };
+  const controllerRef = useRef<AbortController | null>(null);
 
   const upload = useCallback(async (
     file: File,

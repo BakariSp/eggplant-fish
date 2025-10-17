@@ -33,7 +33,7 @@ export default function Button({
   return (
     <button
       className={clsx(base, sizes, variants, widthClass, className)}
-      aria-busy={isLoading || (props as any)["aria-busy"] ? true : undefined}
+      aria-busy={isLoading || ("aria-busy" in props && (props as { [k: string]: unknown })["aria-busy"]) ? true : undefined}
       {...props}
     />
   );

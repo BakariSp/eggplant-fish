@@ -39,14 +39,13 @@ type Props = {
 	pet: Pet;
 	ownerInfo: Owner;
 	emergencyInfo?: Emergency;
-	isPublic?: boolean; // legacy, will be overridden by canEdit
 	ownerUserId?: string;
 	ownerAuthEmail?: string;
 	slug?: string;
 	initialCanEdit?: boolean;
 };
 
-export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, isPublic = false, ownerUserId, ownerAuthEmail, slug, initialCanEdit = false }: Props) {
+export default function PostsLostClient({ pet, ownerInfo, emergencyInfo, ownerUserId, ownerAuthEmail, slug, initialCanEdit = false }: Props) {
 	// 同步 /p 页面逻辑：用本地状态控制 Lost/Found 的展示与动画
 	const [showLostFound, setShowLostFound] = useState(pet.lost_mode === true);
 	const [petLostMode, setPetLostMode] = useState<boolean>(pet.lost_mode ?? false);
