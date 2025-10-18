@@ -49,7 +49,7 @@ const PlaceholderTextarea = forwardRef<HTMLTextAreaElement, PlaceholderTextareaP
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={showPlaceholder ? placeholder : ""}
-        className={`${className || ''} ${showPlaceholder ? 'text-gray-400 italic' : 'text-gray-900'}`}
+        className={`${className || ''} ${showPlaceholder ? 'text-gray-400 italic' : 'text-black'}`}
         {...props}
       />
     );
