@@ -1,0 +1,138 @@
+/* Force light mode for posts page - CSS Module for highest specificity */
+
+.postsPageContainer {
+  background: #FCEFDC !important;
+  background-color: #FCEFDC !important;
+  color: #2B1F1B !important;
+  color-scheme: light !important;
+  min-height: 100vh;
+}
+
+.postsPageContainer * {
+  color-scheme: light !important;
+}
+
+/* Force all backgrounds to be light */
+.postsPageContainer div,
+.postsPageContainer main,
+.postsPageContainer section,
+.postsPageContainer article,
+.postsPageContainer form {
+  color-scheme: light !important;
+}
+
+/* White backgrounds for cards and containers */
+.postsPageContainer [class*="bg-white"],
+.postsPageContainer [class*="bg-\\[#f5f5dc\\]"] {
+  background-color: white !important;
+}
+
+/* Force input fields to stay light */
+.postsPageContainer input,
+.postsPageContainer textarea,
+.postsPageContainer select {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  border-color: #d1d5db !important;
+  color-scheme: light !important;
+}
+
+.postsPageContainer input::placeholder,
+.postsPageContainer textarea::placeholder,
+.postsPageContainer select::placeholder {
+  color: #9ca3af !important;
+  -webkit-text-fill-color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+.postsPageContainer input:focus,
+.postsPageContainer textarea:focus,
+.postsPageContainer select:focus {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Ensure text is always dark */
+.postsPageContainer p,
+.postsPageContainer span,
+.postsPageContainer h1,
+.postsPageContainer h2,
+.postsPageContainer h3,
+.postsPageContainer h4,
+.postsPageContainer h5,
+.postsPageContainer h6,
+.postsPageContainer label {
+  color: inherit !important;
+}
+
+/* Modal/Dialog overrides */
+.postsModal,
+.postsComposer {
+  background-color: white !important;
+  color: #000000 !important;
+  color-scheme: light !important;
+}
+
+.postsModal *,
+.postsComposer * {
+  color-scheme: light !important;
+}
+
+.postsModal input,
+.postsModal textarea,
+.postsComposer input,
+.postsComposer textarea {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  border-color: #d1d5db !important;
+  color-scheme: light !important;
+}
+
+.postsModal input::placeholder,
+.postsModal textarea::placeholder,
+.postsComposer input::placeholder,
+.postsComposer textarea::placeholder {
+  color: #9ca3af !important;
+  -webkit-text-fill-color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+/* Override any dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .postsPageContainer {
+    background: #FCEFDC !important;
+    background-color: #FCEFDC !important;
+    color: #2B1F1B !important;
+  }
+  
+  .postsPageContainer input,
+  .postsPageContainer textarea,
+  .postsPageContainer select {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    color-scheme: light !important;
+  }
+  
+  .postsModal,
+  .postsComposer {
+    background-color: white !important;
+    color: #000000 !important;
+  }
+  
+  .postsModal input,
+  .postsModal textarea,
+  .postsComposer input,
+  .postsComposer textarea {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+  }
+}
+

@@ -130,7 +130,8 @@ textarea:not(:placeholder-shown) {
   caret-color: #000000;
 }
 
-/* Dark mode adaptations for text inputs and textarea */
+/* Dark mode adaptations for text inputs and textarea - DISABLED to keep same as light mode */
+/* 
 @media (prefers-color-scheme: dark) {
   input, textarea, select {
     color: #ffffff;
@@ -143,9 +144,10 @@ textarea:not(:placeholder-shown) {
   }
   .focus-visible:ring,
   .focus\:ring-2 {
-    --ring-color: #c8aa67; /* brand-600 */
+    --ring-color: #c8aa67; 
   }
 }
+*/
 
 /* Performance utilities */
 .cv-auto {

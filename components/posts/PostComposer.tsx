@@ -231,7 +231,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Post title..."
-              className="w-full rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm text-black placeholder:text-black focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)] focus:font-semibold"
+              className="w-full rounded-lg border border-[color:var(--brand-200)] px-3 py-2 text-sm text-black placeholder:text-black focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)] focus:font-semibold bg-white dark:bg-white dark:text-black dark:border-[color:var(--brand-200)] dark:placeholder:text-black"
               style={{ WebkitTextFillColor: "#000000", color: "#000000" }}
               maxLength={100}
             />
@@ -240,7 +240,7 @@ export default function PostComposer({ petId, onPostCreated, onCancel }: Props) 
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="What's your pet up to today?"
-                className="w-full h-28 rounded-lg border border-[color:var(--brand-200)] px-3 py-2 pr-10 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)] text-black placeholder:text-black"
+                className="w-full h-28 rounded-lg border border-[color:var(--brand-200)] px-3 py-2 pr-10 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-300)] text-black placeholder:text-black bg-white dark:bg-white dark:text-black dark:border-[color:var(--brand-200)] dark:placeholder:text-black"
                 style={{ WebkitTextFillColor: "#000000", color: "#000000" }}
                 maxLength={500}
               />

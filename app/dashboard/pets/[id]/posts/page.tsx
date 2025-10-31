@@ -1,6 +1,7 @@
 import { getServerSupabaseClient, getAdminSupabaseClient } from "@/lib/supabase";
 import PostsLostClient from "./PostsLostClient";
 import { redirect } from "next/navigation";
+import styles from "./posts.module.css";
 
 // Force dynamic rendering to prevent caching
 export const dynamic = 'force-dynamic';
@@ -133,7 +134,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <main className="min-h-screen">
+    <main className={`min-h-screen bg-white text-black dark:bg-white dark:text-black [color-scheme:light] ${styles.postsPageContainer}`}>
       <PostsLostClient
         pet={pet}
         ownerInfo={ownerInfo}

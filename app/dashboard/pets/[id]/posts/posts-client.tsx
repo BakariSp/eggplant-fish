@@ -9,6 +9,7 @@ import SectionHeader from "@/components/ui/SectionHeader";
  
 import PostLibrary from "@/components/profile/PostLibrary";
 import OwnerInfo from "@/components/profile/OwnerInfo";
+import styles from "./posts.module.css";
 
 // Lightweight shimmer placeholder for image blur
 const shimmer = (w: number, h: number) => `
@@ -475,7 +476,7 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 bg-transparent">
       {/* Global SiteHeader is included via app/layout.tsx */}
       {/* PetProfileSection is now rendered at page level */}
 
@@ -711,14 +712,14 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
 
       {ownerInfo && <OwnerInfo owner={ownerInfo} emergency={emergencyInfo} />}
 
-      {/* Post Popup Modal */}
+      {/* Post Popup Modal - 强制浅色模式 */}
       {showPopup && selectedPost && (
         <div 
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
           onClick={handleClosePopup}
         >
           <div 
-            className="bg-[#f5f5dc] rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300 scale-100"
+            className={`bg-[#f5f5dc] text-black rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300 scale-100 dark:bg-[#f5f5dc] dark:text-black [color-scheme:light] ${styles.postsModal}`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -943,14 +944,14 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - 强制浅色模式 */}
       {showDeleteModal && (
         <div 
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
           onClick={handleCancelDelete}
         >
           <div 
-            className="bg-[#f5f5dc] rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all duration-300 scale-100"
+            className={`bg-[#f5f5dc] text-black rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all duration-300 scale-100 dark:bg-[#f5f5dc] dark:text-black [color-scheme:light] ${styles.postsModal}`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Icon */}
@@ -976,13 +977,13 @@ export default function PostsClient({ petId, ownerInfo, emergencyInfo, isPublic 
             <div className="flex gap-3">
               <button
                 onClick={handleCancelDelete}
-                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
+                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors dark:bg-gray-200 dark:text-gray-800"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors dark:bg-red-500 dark:text-white"
               >
                 Delete
               </button>
