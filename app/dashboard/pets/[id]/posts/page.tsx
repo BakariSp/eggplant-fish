@@ -134,7 +134,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <main className={`min-h-screen ${styles.postsPageContainer}`}>
+    <main className={`min-h-screen bg-[#FCEFDC] text-black ${styles.postsPageContainer}`}>
       <PostsLostClient
         pet={pet}
         ownerInfo={ownerInfo}

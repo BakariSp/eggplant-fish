@@ -1,6 +1,8 @@
-/* Posts page container - allowing theme colors */
+/* Posts page container - forced light mode */
 
 .postsPageContainer {
+  background-color: #FCEFDC;
+  color: #2B1F1B;
   min-height: 100vh;
 }
 
