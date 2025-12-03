@@ -796,7 +796,33 @@ export default function EditProfileClient({ petId }: Props) {
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const { success, url, error } = await (await import('@/lib/storage')).uploadImage(file, {
+                    
+                    // Check for HEIC/HEIF format (not supported for direct upload)
+                    if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
+                      alert("HEIC/HEIF 图片暂不支持直接上传，请先转换为 JPG/PNG/WebP 再试。");
+                      return;
+                    }
+                    
+                    // Compress before upload using Web Worker to avoid main thread blocking (iCloud fix)
+                    let compressed = file;
+                    try {
+                      const worker = new Worker(new URL("@/lib/workers/image-compress.worker.ts", import.meta.url), { type: "module" });
+                      compressed = await new Promise<File>((resolve) => {
+                        const opts = { maxDimension: 800, quality: 0.82, mimeType: "image/webp" };
+                        worker.onmessage = (ev: MessageEvent<{ ok: boolean; file?: File }>) => {
+                          const data = ev.data;
+                          resolve(data.ok && data.file ? data.file : file);
+                          worker.terminate();
+                        };
+                        worker.postMessage({ file, options: opts });
+                      });
+                    } catch {
+                      // Fallback to main thread compression with idle yielding for large files
+                      const { maybeCompressImage } = await import('@/lib/image');
+                      compressed = await maybeCompressImage(file, { maxDimension: 800, quality: 0.82, mimeType: "image/webp", yieldIdleForLargeFiles: true });
+                    }
+                    
+                    const { success, url, error } = await (await import('@/lib/storage')).uploadImage(compressed, {
                       bucket: 'user-image',
                       folder: `owner/${user?.id || 'unknown'}`,
                       maxSizeBytes: 50 * 1024 * 1024,
