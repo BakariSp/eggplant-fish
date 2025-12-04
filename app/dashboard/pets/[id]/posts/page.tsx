@@ -93,7 +93,7 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
   // 3) Load page data (public-safe fields)
   let ownerInfo = null;
   let emergencyInfo = null;
-  {
+  try {
     const { data: contactPrefs, error: contactError } = await supabase
       .from("contact_prefs")
       .select("*")
@@ -102,8 +102,16 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
 
     console.log("Contact preferences loaded:", { contactPrefs, contactError });
 
-    const adminSupabase = getAdminSupabaseClient();
-    const { data: { user }, error: userError } = await adminSupabase.auth.admin.getUserById(pet.owner_user_id);
+    let user = null;
+    let userError = null;
+    
+    // Only fetch user if owner_user_id exists
+    if (pet.owner_user_id) {
+      const adminSupabase = getAdminSupabaseClient();
+      const result = await adminSupabase.auth.admin.getUserById(pet.owner_user_id);
+      user = result.data?.user;
+      userError = result.error;
+    }
     
     console.log("User info loaded:", { 
       user: user ? {
@@ -131,6 +139,11 @@ export default async function PetPostsPage({ params }: { params: Promise<{ id: s
     
     console.log("Final owner info:", ownerInfo);
     console.log("Emergency info:", emergencyInfo);
+  } catch (err) {
+    console.error("Error loading owner data:", err);
+    // Use default values if loading fails
+    ownerInfo = { name: "Pet Owner" };
+    emergencyInfo = { vet: { name: "", phone: "" } };
   }
 
   return (
