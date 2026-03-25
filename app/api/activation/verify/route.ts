@@ -10,20 +10,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing tag_code or box_code" }, { status: 400 });
     }
     const admin = getAdminSupabaseClient();
-    const { data, error } = await admin
+    // Verify tag_code exists (and not already used)
+    const { data: tagData, error: tagError } = await admin
       .from("activation_codes")
-      .select("tag_code, box_code, is_used")
+      .select("tag_code, is_used")
       .eq("tag_code", tag_code)
-      .eq("box_code", box_code)
       .maybeSingle();
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (tagError) {
+      return NextResponse.json({ error: tagError.message }, { status: 500 });
     }
-    if (!data) {
+    if (!tagData) {
       return NextResponse.json({ error: "Code not found" }, { status: 404 });
     }
-    if (data.is_used) {
+    if (tagData.is_used) {
       return NextResponse.json({ error: "This code has already been used" }, { status: 409 });
+    }
+    // Verify box_code exists (independent of tag_code)
+    const { data: boxRows, error: boxError } = await admin
+      .from("activation_codes")
+      .select("box_code")
+      .eq("box_code", box_code)
+      .limit(1);
+    if (boxError) {
+      return NextResponse.json({ error: boxError.message }, { status: 500 });
+    }
+    if (!boxRows || boxRows.length === 0) {
+      return NextResponse.json({ error: "Code not found" }, { status: 404 });
     }
 
     // Try to get the authenticated user from Authorization header first, then cookies
@@ -54,7 +66,6 @@ export async function POST(req: NextRequest) {
         .from("activation_codes")
         .update({ is_used: true, used_by: userId, used_at: new Date().toISOString() })
         .eq("tag_code", tag_code)
-        .eq("box_code", box_code)
         .eq("is_used", false);
       if (updateErr) {
         return NextResponse.json({ error: updateErr.message }, { status: 500 });
