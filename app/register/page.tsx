@@ -22,13 +22,21 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect")?.trim() || "";
 
-  // Build the absolute redirect URL for OAuth — same pattern as login page.
-  // Prefer redirectParam (which carries the original landing context), fall back
-  // to /dashboard/pets for registrations not originating from a tag scan.
+  // Build the absolute redirect URL for OAuth — mirrors login's getAbsoluteRedirect().
+  // Validates that any absolute redirectParam points to the same origin before using it.
+  // Falls back to /dashboard/pets for external URLs or when no redirect is present.
   const getOAuthRedirectTo = (): string => {
     if (!redirectParam) return `${window.location.origin}/dashboard/pets`;
-    if (redirectParam.startsWith("http")) return redirectParam;
-    return `${window.location.origin}${redirectParam}`;
+    if (redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
+      return `${window.location.origin}${redirectParam}`;
+    }
+    try {
+      const url = new URL(redirectParam);
+      if (url.origin === window.location.origin) return url.toString();
+    } catch {
+      // invalid URL — fall through to default
+    }
+    return `${window.location.origin}/dashboard/pets`;
   };
 
   const handleGoogleSignUp = async () => {

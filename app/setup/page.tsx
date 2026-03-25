@@ -115,7 +115,6 @@ export default function SetupPage() {
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          ...(user?.id ? { 'x-user-id': user.id } : {}),
         },
         body: JSON.stringify({
           name: petName.trim(),

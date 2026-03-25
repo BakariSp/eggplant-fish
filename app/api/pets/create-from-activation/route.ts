@@ -25,11 +25,6 @@ async function getUserId(req: NextRequest): Promise<string | null> {
       // fallthrough
     }
   }
-  // Explicit header fallback (client-provided). Use only if same-origin and HTTPS in production.
-  const hintedUser = req.headers.get("x-user-id");
-  if (hintedUser && typeof hintedUser === "string" && hintedUser.length > 0) {
-    return hintedUser;
-  }
   try {
     const client = await getServerSupabaseClient();
     const { data } = await client.auth.getUser();
