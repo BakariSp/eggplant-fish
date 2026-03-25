@@ -1,8 +1,18 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
+http://localhost:3000/landing?id=4ZY662XGTXPWED
 
 First, run the development server:
+
+
+生成code：
+
+npx tsx scripts/generate-activation-codes.ts --count 100 --tag-len 14 --box-len 6
+
+导出code：
+npx tsx scripts/export-activation-codes.ts --limit 100
+
 
 ```bash
 npm run dev
