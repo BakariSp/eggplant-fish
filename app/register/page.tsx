@@ -15,6 +15,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const handleGoogleSignUp = async () => {
@@ -147,13 +149,13 @@ export default function RegisterPage() {
                 </svg>
               </div>
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-12 py-4 rounded-2xl border border-gray-300 bg-white"
               />
-              <button className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="#999" strokeWidth="2"/>
                   <circle cx="12" cy="12" r="3" stroke="#999" strokeWidth="2"/>
@@ -171,13 +173,13 @@ export default function RegisterPage() {
                 </svg>
               </div>
               <Input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pl-12 py-4 rounded-2xl border border-gray-300 bg-white"
               />
-              <button className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <button type="button" onClick={() => setShowConfirmPassword(v => !v)} className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="#999" strokeWidth="2"/>
                   <circle cx="12" cy="12" r="3" stroke="#999" strokeWidth="2"/>
