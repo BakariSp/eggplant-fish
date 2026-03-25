@@ -14,7 +14,7 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [checkingEligibility, setCheckingEligibility] = useState(false);
   const [eligible, setEligible] = useState(false);
   const [claimedTagCode, setClaimedTagCode] = useState<string | null>(null);
@@ -39,6 +39,14 @@ export default function SetupPage() {
     if (checkingEligibility !== false) setCheckingEligibility(false);
   };
 
+  // Auth guard — redirect to login once auth is determined and there is no session
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
+
   // Initial eligibility check (guarded to run once per user id)
   const didInitRef = useRef<string | null>(null);
   useEffect(() => {
@@ -55,10 +63,19 @@ export default function SetupPage() {
         if (raw) {
           const { tag_code, box_code } = JSON.parse(raw);
           if (tag_code && box_code) {
+            // Must include auth token so the API can bind the code to this user.
+            // Without the token the API returns claimed:false and eligibility stays empty.
+            const supabase = getBrowserSupabaseClient();
+            const { data: { session: pendingSession } } = await supabase.auth.getSession();
             await fetch("/api/activation/verify", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ tag_code, box_code })
+              headers: {
+                "Content-Type": "application/json",
+                ...(pendingSession?.access_token
+                  ? { Authorization: `Bearer ${pendingSession.access_token}` }
+                  : {}),
+              },
+              body: JSON.stringify({ tag_code, box_code }),
             });
             sessionStorage.removeItem("pendingActivation");
             await loadEligibility();
@@ -122,6 +139,16 @@ export default function SetupPage() {
     }
   };
 
+
+  // While auth is loading (or while the guard redirect is in flight), show a spinner.
+  // This prevents the form from flashing to unauthenticated users.
+  if (authLoading || !user) {
+    return (
+      <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FCEFDC" }}>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8f743c]" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#FCEFDC" }}>

@@ -18,25 +18,35 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = useMemo(() => (searchParams.get('redirect') || '').trim(), [searchParams]);
+  const registered = useMemo(() => searchParams.get('registered') === '1', [searchParams]);
 
+  // Returns a same-origin absolute URL for use with Supabase OAuth's redirectTo.
+  // Rejects any absolute URL pointing to a different origin.
   const getAbsoluteRedirect = (): string => {
-    // Check if we're on the client side
-    if (typeof window === 'undefined') {
-      return '/'; // Fallback for server-side rendering
-    }
-    
+    if (typeof window === 'undefined') return '/';
     try {
       if (!redirectParam) return `${window.location.origin}/`;
-      // If relative path, make it absolute
-      if (redirectParam.startsWith('/')) {
-        return `${window.location.origin}${redirectParam}`;
-      }
+      if (redirectParam.startsWith('/')) return `${window.location.origin}${redirectParam}`;
       const url = new URL(redirectParam);
-      // Only allow same-origin absolute URLs
       if (url.origin === window.location.origin) return url.toString();
       return `${window.location.origin}/`;
     } catch {
       return `${window.location.origin}/`;
+    }
+  };
+
+  // Returns a safe relative path for use with router.push after email login.
+  // Rejects external absolute URLs to prevent open-redirect attacks.
+  const safeRedirectPath = (): string => {
+    if (!redirectParam) return '/';
+    // Reject protocol-relative URLs (e.g. //evil.com) which browsers treat as absolute
+    if (redirectParam.startsWith('/') && !redirectParam.startsWith('//')) return redirectParam;
+    try {
+      const url = new URL(redirectParam);
+      if (url.origin === window.location.origin) return url.pathname + url.search;
+      return '/';
+    } catch {
+      return '/';
     }
   };
 
@@ -78,7 +88,7 @@ function LoginForm() {
         setError(error.message);
       } else {
         if (redirectParam) {
-          router.push(redirectParam);
+          router.push(safeRedirectPath());
           return;
         }
         // Check if user has pets before redirecting
@@ -131,6 +141,13 @@ function LoginForm() {
               your pet story through our platform!
             </p>
           </div>
+
+          {/* Registration success notice */}
+          {registered && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+              <p className="text-green-700 text-sm">账号已创建！请查收验证邮件，点击链接确认后再登录。</p>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -254,7 +271,10 @@ function LoginForm() {
           {/* Sign Up Link */}
           <div className="text-center text-sm text-gray-600">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-[#EC5914] font-medium">
+            <Link
+              href={redirectParam ? `/register?redirect=${encodeURIComponent(redirectParam)}` : "/register"}
+              className="text-[#EC5914] font-medium"
+            >
               create one
             </Link>
           </div>

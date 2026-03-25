@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 
-export default function RegisterPage() {
+// Inner component that uses useSearchParams — must be inside <Suspense>
+function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -18,23 +19,30 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect")?.trim() || "";
+
+  // Build the absolute redirect URL for OAuth — same pattern as login page.
+  // Prefer redirectParam (which carries the original landing context), fall back
+  // to /dashboard/pets for registrations not originating from a tag scan.
+  const getOAuthRedirectTo = (): string => {
+    if (!redirectParam) return `${window.location.origin}/dashboard/pets`;
+    if (redirectParam.startsWith("http")) return redirectParam;
+    return `${window.location.origin}${redirectParam}`;
+  };
 
   const handleGoogleSignUp = async () => {
     try {
       setLoading(true);
       setError("");
       const supabase = getBrowserSupabaseClient();
-      
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/verify?email=google`
-        }
+          redirectTo: getOAuthRedirectTo(),
+        },
       });
-
-      if (error) {
-        setError(error.message);
-      }
+      if (error) setError(error.message);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -49,7 +57,7 @@ export default function RegisterPage() {
       setSuccess("");
 
       if (password !== confirmPassword) {
-        setError("Passwords don&apos;t match");
+        setError("Passwords don't match");
         return;
       }
 
@@ -64,15 +72,23 @@ export default function RegisterPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard/pets`
-        }
+          // After the user clicks the verification link in their email, Supabase
+          // redirects them here. Use the same target as Google OAuth so the user
+          // lands back in the original flow (e.g. /landing?id=<tag>&step=code).
+          // Falls back to /dashboard/pets when there is no landing context.
+          emailRedirectTo: getOAuthRedirectTo(),
+        },
       });
 
       if (error) {
         setError(error.message);
       } else {
-        // Redirect to verification page with email parameter
-        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        // After sign-up the user must verify email then log in.
+        // Carry the redirect param so login can send them back to the original flow.
+        const loginUrl = redirectParam
+          ? `/login?redirect=${encodeURIComponent(redirectParam)}&registered=1`
+          : "/login?registered=1";
+        router.push(loginUrl);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -100,10 +116,13 @@ export default function RegisterPage() {
           {/* Title */}
           <div>
             <h1 className="text-3xl font-bold text-[#8f743c] mb-2">
-              Create your<br />account now
+              Create your
+              <br />
+              account now
             </h1>
             <p className="text-[#8f743c] opacity-80">
-              Start your journey with us, and let&apos;s sharing<br />
+              Start your journey with us, and let&apos;s sharing
+              <br />
               your pet story through our platform!
             </p>
           </div>
@@ -126,8 +145,20 @@ export default function RegisterPage() {
             <div className="relative">
               <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="L22 6L12 13L2 6" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path
+                    d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z"
+                    stroke="#999"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="L22 6L12 13L2 6"
+                    stroke="#999"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <Input
@@ -143,9 +174,9 @@ export default function RegisterPage() {
             <div className="relative">
               <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="#999" strokeWidth="2"/>
-                  <circle cx="12" cy="16" r="1" fill="#999"/>
-                  <path d="M7 11V7A5 5 0 0 1 17 7V11" stroke="#999" strokeWidth="2"/>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="#999" strokeWidth="2" />
+                  <circle cx="12" cy="16" r="1" fill="#999" />
+                  <path d="M7 11V7A5 5 0 0 1 17 7V11" stroke="#999" strokeWidth="2" />
                 </svg>
               </div>
               <Input
@@ -155,10 +186,14 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-12 py-4 rounded-2xl border border-gray-300 bg-white"
               />
-              <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="#999" strokeWidth="2"/>
-                  <circle cx="12" cy="12" r="3" stroke="#999" strokeWidth="2"/>
+                  <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="#999" strokeWidth="2" />
+                  <circle cx="12" cy="12" r="3" stroke="#999" strokeWidth="2" />
                 </svg>
               </button>
             </div>
@@ -167,9 +202,9 @@ export default function RegisterPage() {
             <div className="relative">
               <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="#999" strokeWidth="2"/>
-                  <circle cx="12" cy="16" r="1" fill="#999"/>
-                  <path d="M7 11V7A5 5 0 0 1 17 7V11" stroke="#999" strokeWidth="2"/>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="#999" strokeWidth="2" />
+                  <circle cx="12" cy="16" r="1" fill="#999" />
+                  <path d="M7 11V7A5 5 0 0 1 17 7V11" stroke="#999" strokeWidth="2" />
                 </svg>
               </div>
               <Input
@@ -179,10 +214,14 @@ export default function RegisterPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pl-12 py-4 rounded-2xl border border-gray-300 bg-white"
               />
-              <button type="button" onClick={() => setShowConfirmPassword(v => !v)} className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="#999" strokeWidth="2"/>
-                  <circle cx="12" cy="12" r="3" stroke="#999" strokeWidth="2"/>
+                  <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="#999" strokeWidth="2" />
+                  <circle cx="12" cy="12" r="3" stroke="#999" strokeWidth="2" />
                 </svg>
               </button>
             </div>
@@ -192,9 +231,9 @@ export default function RegisterPage() {
               onClick={handleEmailSignUp}
               disabled={loading || !email || !password || !confirmPassword}
               className="w-full py-4 text-lg font-semibold rounded-2xl disabled:opacity-50"
-              style={{ 
+              style={{
                 backgroundColor: "#8f743c",
-                color: "white"
+                color: "white",
               }}
             >
               {loading ? "Creating Account..." : "Sign Up"}
@@ -219,10 +258,22 @@ export default function RegisterPage() {
             >
               <div className="flex items-center justify-center space-x-3">
                 <svg width="20" height="20" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
                 </svg>
                 <span className="text-gray-700">Google</span>
               </div>
@@ -232,12 +283,31 @@ export default function RegisterPage() {
           {/* Login Link */}
           <div className="text-center text-sm text-gray-600">
             Already had an account?{" "}
-            <Link href="/login" className="text-[#EC5914] font-medium">
+            <Link
+              href={redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login"}
+              className="text-[#EC5914] font-medium"
+            >
               Login
             </Link>
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+// Page-level wrapper — required so useSearchParams() inside RegisterForm
+// is properly enclosed in a Suspense boundary (Next.js App Router requirement).
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen relative flex items-center justify-center" style={{ backgroundColor: "#FCEFDC" }}>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8f743c]" />
+        </main>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

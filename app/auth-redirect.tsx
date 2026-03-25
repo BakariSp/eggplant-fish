@@ -17,28 +17,43 @@ export default function AuthRedirect() {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          console.log("Authenticated user found:", session.user.email);
-          // If we have a pending activation from pre-login verification, claim it now and go to /setup
+          // If we have a pending activation from pre-login verification, claim it now.
           try {
             const raw = sessionStorage.getItem("pendingActivation");
             if (raw) {
               const { tag_code, box_code } = JSON.parse(raw);
               if (tag_code && box_code) {
-                await fetch("/api/activation/verify", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-                  },
-                  body: JSON.stringify({ tag_code, box_code })
-                });
+                let claimed = false;
+                try {
+                  const apiRes = await fetch("/api/activation/verify", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      ...(session.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                    },
+                    body: JSON.stringify({ tag_code, box_code }),
+                  });
+                  const apiData = await apiRes.json().catch(() => ({}));
+                  claimed = apiRes.ok && !!apiData?.claimed;
+                } catch {
+                  // Network error — leave pendingActivation intact so landing can retry
+                }
+
+                if (claimed) {
+                  sessionStorage.removeItem("pendingActivation");
+                  router.push("/setup");
+                } else {
+                  // Claim failed (409 / server error / network) — do NOT clear sessionStorage.
+                  // Send user back to landing so the full orchestrator can re-evaluate.
+                  router.push(tag_code ? `/landing?id=${encodeURIComponent(tag_code)}` : "/landing");
+                }
+                return;
               }
+              // raw existed but lacked tag_code/box_code — garbage entry, clean up and continue
               sessionStorage.removeItem("pendingActivation");
-              router.push('/setup');
-              return;
             }
           } catch {
-            // ignore claim errors; continue to DB check
+            // JSON parse error or unexpected — ignore and continue normal routing
           }
 
           // If user has a claimed activation (no pet yet), force to /setup
@@ -64,16 +79,13 @@ export default function AuthRedirect() {
             .select("id")
             .eq("owner_user_id", session.user.id)
             .limit(1);
-          
-          console.log("User has pets:", pets?.length || 0);
-          
+
           if (pets && pets.length > 0) {
             router.push('/dashboard/pets');
           } else {
             router.push('/setup');
           }
         } else {
-          console.log("No authenticated user, redirecting to landing");
           router.push('/landing');
         }
       } catch (error) {
