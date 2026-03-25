@@ -58,8 +58,8 @@ async function handleReportFound(
     throw createInternalError("Failed to update pet status", { originalError: updateError });
   }
 
-  // Send notifications (fire-and-forget)
-  notifyOnFoundReport(
+  // Send notifications (awaited so Vercel doesn't kill the function before SMTP completes)
+  await notifyOnFoundReport(
     validatedId as string,
     { name: finder_name, email: finder_email },
     found_location

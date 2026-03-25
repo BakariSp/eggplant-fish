@@ -131,14 +131,14 @@ async function handleUpdateStatus(
     throw createInternalError("Failed to update pet status", { originalError: updateError });
   }
 
-  // Send notifications every time (fire-and-forget)
+  // Send notifications (awaited so Vercel doesn't kill the function before SMTP completes)
   const newLost = status === 'lost';
   if (status === 'lost') {
-    notifyOwnerOnLost(validatedId as string, { last_seen_location }).catch((e) => {
+    await notifyOwnerOnLost(validatedId as string, { last_seen_location }).catch((e) => {
       console.error("Failed to send lost notification:", e);
     });
   } else if (status === 'found') {
-    notifyOwnerOnFound(validatedId as string).catch((e) => {
+    await notifyOwnerOnFound(validatedId as string).catch((e) => {
       console.error("Failed to send found notification:", e);
     });
   }
