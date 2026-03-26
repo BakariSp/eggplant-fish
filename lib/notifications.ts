@@ -1,6 +1,5 @@
 import { getAdminSupabaseClient } from "./supabase";
 import { lostToOwner, foundToOwner, reportedFoundToFinder, reportedFoundToOwner, type CommonCtx, type Owner, type Pet, type Finder } from "../emails/templates";
-import nodemailer from "nodemailer";
 
 type NotifyResult = { ok: boolean; error?: string };
 
@@ -360,45 +359,36 @@ export async function notifyOwnerOnReportedLost(
   }
 }
 
-// Create Gmail SMTP transporter
-function createGmailTransporter() {
-  const user = process.env.GMAIL_SMTP_USER;
-  const pass = process.env.GMAIL_SMTP_PASSWORD;
-  
-  if (!user || !pass) {
-    throw new Error("Gmail SMTP credentials missing");
-  }
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: user,
-      pass: pass
-    }
-  });
-}
-
 async function sendEmail(params: { to: string; subject: string; content: string }): Promise<NotifyResult> {
-  const user = process.env.GMAIL_SMTP_USER;
-  const pass = process.env.GMAIL_SMTP_PASSWORD;
-  const from = process.env.GMAIL_SMTP_FROM || user;
-  
-  if (!user || !pass) {
-    console.info("[notify] Gmail SMTP credentials missing; skipping email");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const functionSecret = process.env.FUNCTION_SECRET;
+
+  if (!supabaseUrl) {
+    console.info("[notify] NEXT_PUBLIC_SUPABASE_URL missing; skipping email");
     return { ok: true };
   }
 
   try {
-    const transporter = createGmailTransporter();
-    
-    await transporter.sendMail({
-      from: from,
-      to: params.to,
-      subject: params.subject,
-      text: params.content,
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-business-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(functionSecret ? { Authorization: `Bearer ${functionSecret}` } : {}),
+      },
+      body: JSON.stringify({
+        to: params.to,
+        subject: params.subject,
+        text: params.content,
+      }),
     });
-    
-    console.info(`[notify] Email sent successfully to ${params.to}`);
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[notify] Failed to send email to ${params.to}:`, err);
+      return { ok: false, error: err };
+    }
+
+    console.info(`[notify] Email sent to ${params.to}`);
     return { ok: true };
   } catch (e) {
     console.error(`[notify] Failed to send email to ${params.to}:`, e);
